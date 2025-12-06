@@ -63,7 +63,7 @@ export default function LoginPage() {
                         <div className="flex flex-col items-center gap-4">
                             {/* Replace 'your_bot_username' with actual bot username from env or config */}
                             <TelegramLoginButton
-                                botName="PolymarketSniperBot"
+                                botName={process.env.NEXT_PUBLIC_BOT_USERNAME || 'PolymarketSniperBot'}
                                 onAuth={handleTelegramAuth}
                                 buttonSize="large"
                             />
