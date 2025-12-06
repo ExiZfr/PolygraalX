@@ -31,14 +31,18 @@ npm run build
 
 # 4. Restart the Process Manager (PM2)
 echo "🔄 [4/4] Restarting PM2 process..."
+# Kill any existing process on port 3000 to avoid EADDRINUSE
+echo "🧹 Cleaning up port 3000..."
+fuser -k 3000/tcp || true
+
+# Delete old PM2 process to ensure fresh start
 if pm2 list | grep -q "$APP_NAME"; then
-    pm2 restart "$APP_NAME"
-    echo "✅ Process '$APP_NAME' restarted."
-else
-    echo "⚠️ Process '$APP_NAME' not found. Starting new instance..."
-    pm2 start npm --name "$APP_NAME" -- start
-    echo "✅ Process '$APP_NAME' started."
+    pm2 delete "$APP_NAME"
 fi
+
+echo "🚀 Starting new instance..."
+pm2 start npm --name "$APP_NAME" -- start
+echo "✅ Process '$APP_NAME' started."
 
 echo "=========================================="
 echo "✅ DEPLOYMENT SUCCESSFUL!"
