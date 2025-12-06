@@ -165,7 +165,7 @@ export default function LoginPage() {
                                 Open Bot manually
                             </a>
 
-                            <div className="mt-4 hidden p-4 border border-zinc-800 rounded bg-black/40">
+                            <div className="mt-4 p-4 border border-zinc-800 rounded bg-black/40">
                                 <p className="text-xs text-zinc-500 mb-2">DEBUG: Manual Login</p>
                                 <button
                                     onClick={() => handleAuth({
