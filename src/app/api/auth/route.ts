@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { TelegramUser } from '@/lib/types'
 import { validateTelegramData } from '@/lib/auth'
 import { cookies } from 'next/headers'
+import { supabase } from '@/lib/supabase'
 
 // IMPORTANT: This comes from your env
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || ""
@@ -9,9 +10,8 @@ const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || ""
 export async function POST(request: Request) {
     try {
         const data: TelegramUser = await request.json()
-
-        // Define Allowed Users (Admin)
-        const ALLOWED_USERS = [7139453099]; // Votre ID Admin
+        const telegramId = Number(data.id);
+        const ADMIN_ID = 7139453099;
 
         if (!BOT_TOKEN) {
             console.error("TELEGRAM_BOT_TOKEN is not defined")
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
 
         // 1. Validate the cryptographic signature
         // DEV BYPASS: Allow admin to bypass signature check for testing web flow
-        if (data.hash === "dev_bypass" && ALLOWED_USERS.includes(data.id)) {
+        if (data.hash === "dev_bypass" && telegramId === ADMIN_ID) {
             console.log("Dev bypass used for admin login");
         } else {
             const isValid = validateTelegramData(data, BOT_TOKEN)
@@ -47,22 +47,75 @@ export async function POST(request: Request) {
 
 
 
-        // Simulating DB check
-        if (!ALLOWED_USERS.includes(data.id)) {
-            console.log(`User ${data.id} tried to login but is not in allowed list.`);
-            return NextResponse.json(
-                { error: "Access Denied. You do not have a paid subscription." },
-                { status: 403 }
-            )
+        // 3. Database Check via Supabase
+
+        try {
+            // First, try to get the user
+            let { data: user, error } = await supabase
+                .from('users')
+                .select('*')
+                .eq('telegram_id', telegramId)
+                .single()
+
+            if (error && error.code === 'PGRST116') {
+                // User not found -> Create them (auto-registration)
+                console.log(`User ${telegramId} not found, creating new user...`)
+                const { data: newUser, error: createError } = await supabase
+                    .from('users')
+                    .insert([
+                        {
+                            telegram_id: telegramId,
+                            username: data.username,
+                            first_name: data.first_name,
+                            // Auto-activate Admin, others pending/inactive by default
+                            is_active: telegramId === ADMIN_ID,
+                            role: telegramId === ADMIN_ID ? 'admin' : 'user'
+                        }
+                    ])
+                    .select()
+                    .single()
+
+                if (createError) {
+                    console.error("Error creating user:", createError)
+                    // If creation fails but user is Admin, imply success for emergency access
+                    if (telegramId !== ADMIN_ID) throw createError
+                }
+                user = newUser
+            } else if (error) {
+                console.error("Supabase Error:", error)
+                // Fallback to Admin whitelist if DB fails
+                if (telegramId !== ADMIN_ID) throw error
+            }
+
+            // Check Access Permissions
+            // If DB user exists: verify is_active. If DB failed/missing: check if Admin ID
+            const hasAccess = (user && user.is_active) || telegramId === ADMIN_ID
+
+            if (!hasAccess) {
+                return NextResponse.json(
+                    { error: "Access Denied. You do not have a paid subscription." },
+                    { status: 403 }
+                )
+            }
+
+        } catch (dbError) {
+            console.error("Database Login Error check:", dbError)
+            // If authentic database logic fails, we fallback to our basic hardcoded Check for safety
+            if (telegramId !== ADMIN_ID) {
+                return NextResponse.json(
+                    { error: "Database Connection Failed" },
+                    { status: 500 }
+                )
+            }
         }
 
         // 4. Set Session Cookie
-        // In a real app, use a JWT or session ID encrypted library like 'jose' or 'iron-session'
         const cookieStore = await cookies()
         cookieStore.set('session', JSON.stringify({
-            id: data.id,
+            id: telegramId,
             username: data.username,
-            photo_url: data.photo_url
+            photo_url: data.photo_url,
+            is_admin: telegramId === ADMIN_ID
         }), {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
