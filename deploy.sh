@@ -13,7 +13,8 @@ echo "=========================================="
 
 # 1. Pull the latest code from GitHub
 echo "📥 [1/4] Pulling latest changes..."
-git pull origin main
+git fetch origin main
+git reset --hard origin/main
 
 # 2. Install Dependencies
 echo "📦 [2/4] Installing dependencies..."
