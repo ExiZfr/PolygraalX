@@ -1,15 +1,62 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { TelegramLoginButton } from "@/components/auth/TelegramLoginButton"
 import { TelegramUser } from "@/lib/types"
 import { Loader2 } from "lucide-react"
 
+// Extend Window interface for Telegram WebApp
+declare global {
+    interface Window {
+        Telegram?: {
+            WebApp?: {
+                initData: string
+                initDataUnsafe: {
+                    user?: {
+                        id: number
+                        first_name: string
+                        last_name?: string
+                        username?: string
+                        photo_url?: string
+                    }
+                }
+                ready: () => void
+                expand: () => void
+            }
+        }
+    }
+}
+
 export default function LoginPage() {
     const router = useRouter()
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [isMiniApp, setIsMiniApp] = useState(false)
+
+    useEffect(() => {
+        // Check if we're inside a Telegram Mini App
+        if (typeof window !== "undefined" && window.Telegram?.WebApp) {
+            setIsMiniApp(true)
+            const tg = window.Telegram.WebApp
+            tg.ready()
+            tg.expand()
+
+            // Auto-login if user data is available
+            const user = tg.initDataUnsafe?.user
+            if (user) {
+                handleAuth({
+                    id: user.id,
+                    first_name: user.first_name,
+                    last_name: user.last_name,
+                    username: user.username,
+                    photo_url: user.photo_url,
+                    auth_date: Math.floor(Date.now() / 1000),
+                    hash: tg.initData, // Use full initData as hash for validation
+                })
+            }
+        }
+    }, [])
 
     const handleAuth = async (user: TelegramUser) => {
         setIsLoading(true)
@@ -67,16 +114,21 @@ export default function LoginPage() {
                             <Loader2 className="h-5 w-5 animate-spin" />
                             Verifying access...
                         </div>
+                    ) : !isMiniApp ? (
+                        <>
+                            <TelegramLoginButton
+                                botName={BOT_USERNAME}
+                                onAuth={handleAuth}
+                            />
+                            <p className="text-xs text-zinc-600 max-w-[200px] text-center">
+                                By logging in using Telegram, you confirm you have a paid subscription.
+                            </p>
+                        </>
                     ) : (
-                        <TelegramLoginButton
-                            botName={BOT_USERNAME}
-                            onAuth={handleAuth}
-                        />
+                        <div className="text-center text-zinc-400">
+                            <p>Loading Telegram data...</p>
+                        </div>
                     )}
-
-                    <p className="text-xs text-zinc-600 max-w-[200px] text-center">
-                        By logging in using Telegram, you confirm you have a paid subscription.
-                    </p>
                 </div>
             </div>
         </div>
