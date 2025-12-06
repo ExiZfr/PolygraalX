@@ -37,7 +37,7 @@ export default function LoginPage() {
     }
 
     // NOTE: This usually comes from env vars (NEXT_PUBLIC_BOT_USERNAME)
-    const BOT_USERNAME = process.env.NEXT_PUBLIC_BOT_USERNAME || "PolyMarketBot"
+    const BOT_USERNAME = process.env.NEXT_PUBLIC_BOT_USERNAME || "Plmktradingbot"
 
     return (
         <div className="flex h-screen w-full flex-col items-center justify-center bg-black text-white relative overflow-hidden">

@@ -22,7 +22,7 @@ openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
 echo "🔧 Configuring Nginx..."
 cat <<EOF > /etc/nginx/sites-available/polybot
 server {
-    listen 8443 ssl;
+    listen 9443 ssl;
     server_name _;
 
     ssl_certificate /etc/nginx/ssl/nginx-selfsigned.crt;
