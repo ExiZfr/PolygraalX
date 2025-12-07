@@ -65,7 +65,7 @@ export function calculateSnipability(market: ProcessedMarket): SnipabilityScore 
     const eventType = determineEventType(market.title, market.tags);
 
     // Generate description
-    const description = generateDescription(score, urgency, market, hoursUntilEnd);
+    const description = generateDescription(score, urgency, market, hoursUntilEnd, whaleActivity);
 
     return {
         score,
@@ -148,7 +148,7 @@ function determineEventType(title: string, tags: string[]): EventType {
 /**
  * Generate human-readable description
  */
-function generateDescription(score: number, urgency: UrgencyLevel, market: ProcessedMarket, hoursUntilEnd: number): string {
+function generateDescription(score: number, urgency: UrgencyLevel, market: ProcessedMarket, hoursUntilEnd: number, whaleActivity: boolean): string {
     const volumeNum = parseVolume(market.volume);
     const timeStr = hoursUntilEnd < 24 ? `${Math.round(hoursUntilEnd)}h` : `${Math.round(hoursUntilEnd / 24)}d`;
 
@@ -156,7 +156,7 @@ function generateDescription(score: number, urgency: UrgencyLevel, market: Proce
         return `🔥 URGENT: Market closes in ${timeStr}. High volume ($${(volumeNum / 1000000).toFixed(1)}M). Immediate action recommended.`;
     }
     if (urgency === 'HIGH') {
-        return `⚡ ${timeStr} until event. ${market.whaleActivity ? 'Whale wallets detected. ' : ''}Strong snipe opportunity.`;
+        return `⚡ ${timeStr} until event. ${whaleActivity ? 'Whale wallets detected. ' : ''}Strong snipe opportunity.`;
     }
     if (urgency === 'MEDIUM') {
         return `📊 Moderate opportunity. ${timeStr} window. Volume: ${market.volume}. Monitor for news.`;
