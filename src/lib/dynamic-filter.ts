@@ -4,15 +4,7 @@
  */
 
 import { ProcessedMarket } from './polymarket';
-
-export interface SnipabilityScore {
-    score: number;
-    urgency: string;
-    whaleActivity: boolean;
-    eventType: string;
-    description: string;
-    factors: any;
-}
+import { SnipabilityScore } from './snipability-algo';
 
 export function filterSnipableMarkets(
     markets: Array<{ market: ProcessedMarket; sniping: SnipabilityScore }>,
