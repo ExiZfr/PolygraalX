@@ -5,7 +5,8 @@ import { FluxCard, MarketData, SnipingData } from "@/components/radar/FluxCard";
 import { HelpCircle, Search, XCircle, RefreshCw, Star, Filter, TrendingUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { fetchPolymarketMarkets, ProcessedMarket } from "@/lib/polymarket";
-import { calculateSnipability, filterSnipableMarkets, EventType, UrgencyLevel } from "@/lib/snipability-algo";
+import { calculateSnipability, EventType, UrgencyLevel } from "@/lib/snipability-algo";
+import { filterSnipableMarkets } from "@/lib/dynamic-filter";
 import { listener, ListenerStatus } from "@/lib/listener";
 
 type FilterEventType = EventType | 'all';
@@ -69,7 +70,8 @@ export default function RadarPage() {
                 };
             });
 
-            const filtered = filterSnipableMarkets(scored, 30);
+            // Dynamic filtering: guarantees 25-500 quality markets
+            const filtered = filterSnipableMarkets(scored, 25, 500);
             setMarkets(filtered);
 
             filtered.forEach(({ market }) => {
