@@ -78,13 +78,7 @@ function detectCategory(title: string, originalCategory: string, tags: string[])
     return 'Other';
 }
 
-return NextResponse.json(processed);
 
-    } catch (error) {
-    console.error('[API Route] Critical error:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
-}
-}
 
 function formatVolume(volume: number | null | undefined): string {
     if (!volume || typeof volume !== 'number') {
