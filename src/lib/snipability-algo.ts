@@ -32,23 +32,23 @@ export function calculateSnipability(market: ProcessedMarket): SnipabilityScore 
     const timeUntilEnd = endDate - now;
     const hoursUntilEnd = timeUntilEnd / (1000 * 60 * 60);
 
-    // 1. Time Score (0-30 points)
-    // Markets ending soon or with events happening soon score higher
+    // 1. Time Score (0-30 points) - STRICTER
     const timeScore = calculateTimeScore(hoursUntilEnd);
 
-    // 2. Volume Score (0-25 points)
+    // 2. Volume Score (0-30 points) - INCREASED WEIGHT & HIGHER THRESHOLD
+    // Now requires $500k for max score (was $100k)
     const volumeNum = parseVolume(market.volume);
-    const volumeScore = Math.min(25, (volumeNum / 100000) * 25);
+    const volumeScore = Math.min(30, (volumeNum / 500000) * 30);
 
-    // 3. Liquidity Score (0-20 points)
-    const liquidityScore = Math.min(20, (market.liquidity / 50000) * 20);
+    // 3. Liquidity Score (0-25 points) - INCREASED WEIGHT
+    // Requires $200k liquidity for max score (was $50k)
+    const liquidityScore = Math.min(25, (market.liquidity / 200000) * 25);
 
-    // 4. Probability Score (0-15 points)
-    // Markets close to 50/50 are more tradable (higher volatility potential)
+    // 4. Probability Score (0-10 points) - REDUCED (less important)
     const probDiff = Math.abs(market.probability - 50);
-    const probabilityScore = Math.max(0, 15 - (probDiff / 50) * 15);
+    const probabilityScore = Math.max(0, 10 - (probDiff / 50) * 10);
 
-    // 5. Category Score (0-10 points)
+    // 5. Category Score (0-15 points) - INCREASED IMPORTANCE
     const categoryScore = getCategoryScore(market.category, market.tags);
 
     // Total Score
@@ -109,15 +109,24 @@ function parseVolume(volume: string): number {
 }
 
 /**
- * Get category-based score
+ * Get category-based score - ENHANCED
  */
 function getCategoryScore(category: string, tags: string[]): number {
     const highValueCategories = ['Politics', 'Crypto', 'Sports', 'Finance'];
-    const highValueTags = ['election', 'bitcoin', 'earnings', 'championship', 'fed', 'rate'];
+    const highValueTags = [
+        'election', 'bitcoin', 'eth', 'btc', 'crypto',
+        'earnings', 'championship', 'fed', 'rate', 'trump',
+        'president', 'nfl', 'nba', 'world cup', 'olympics'
+    ];
 
     let score = 0;
-    if (highValueCategories.includes(category)) score += 5;
-    if (tags.some(tag => highValueTags.includes(tag.toLowerCase()))) score += 5;
+
+    // Category bonus (0-8 points)
+    if (highValueCategories.includes(category)) score += 8;
+
+    // Tag bonus (0-7 points)
+    if (tags.some(tag => highValueTags.includes(tag.toLowerCase()))) score += 7;
+
     return score;
 }
 

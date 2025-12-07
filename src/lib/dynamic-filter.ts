@@ -1,6 +1,6 @@
 /**
- * DYNAMIC FILTERING ALGORITHM
- * Guarantees 25-500 quality markets by adjusting thresholds intelligently
+ * DYNAMIC FILTERING ALGORITHM - ULTRA QUALITY MODE
+ * Guarantees 40-200 ULTRA-QUALITY markets by using stricter thresholds
  */
 
 import { ProcessedMarket } from './polymarket';
@@ -8,16 +8,16 @@ import { SnipabilityScore } from './snipability-algo';
 
 export function filterSnipableMarkets(
     markets: Array<{ market: ProcessedMarket; sniping: SnipabilityScore }>,
-    targetMin: number = 25,
-    targetMax: number = 500
+    targetMin: number = 40,
+    targetMax: number = 200
 ): typeof markets {
     // Sort by score descending (best quality first)
     const sorted = markets.sort((a, b) => b.sniping.score - a.sniping.score);
 
     console.log(`[Filter] Starting with ${sorted.length} total markets`);
 
-    // Define quality thresholds from strict to permissive
-    const thresholds = [50, 45, 40, 35, 30, 25, 20, 15, 10, 5];
+    // STRICTER quality thresholds (60 → 30 instead of 50 → 5)
+    const thresholds = [60, 55, 50, 45, 40, 35, 30];
 
     for (const minScore of thresholds) {
         const filtered = sorted.filter(m => m.sniping.score >= minScore);
@@ -26,7 +26,7 @@ export function filterSnipableMarkets(
 
         // PERFECT: We have between targetMin-targetMax markets
         if (filtered.length >= targetMin && filtered.length <= targetMax) {
-            console.log(`✅ [Filter] Found ${filtered.length} markets (score ≥${minScore})`);
+            console.log(`✅ [Filter] Found ${filtered.length} ULTRA-QUALITY markets (score ≥${minScore})`);
             return filtered;
         }
 
@@ -41,15 +41,16 @@ export function filterSnipableMarkets(
             continue;
         }
 
-        // LAST RESORT: Return what we have if it's >= 10 markets
-        if (filtered.length >= 10) {
+        // LAST RESORT: Return what we have if it's >= 20 markets
+        if (filtered.length >= 20) {
             console.warn(`⚠️ [Filter] Only ${filtered.length} markets at lowest threshold (${minScore})`);
             return filtered;
         }
     }
 
-    // ABSOLUTE FALLBACK: Return top 100 regardless of score
-    const fallback = sorted.slice(0, Math.min(100, sorted.length));
+    // ABSOLUTE FALLBACK: Return top 50 regardless of score
+    const fallback = sorted.slice(0, Math.min(50, sorted.length));
     console.error(`❌ [Filter] FALLBACK: Returning top ${fallback.length} markets (no threshold met)`);
     return fallback;
 }
+

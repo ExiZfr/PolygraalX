@@ -34,7 +34,7 @@ export async function GET() {
                 volume: formatVolume(m.volume || 0),
                 liquidity: m.liquidity || 0,
                 endDate: m.end_date_iso || m.endDate || new Date(Date.now() + 86400000).toISOString(),
-                category: m.category || 'Other',
+                category: detectCategory(m.question || m.description, m.category, m.tags || []),
                 tags: m.tags || []
             }));
 
@@ -44,6 +44,46 @@ export async function GET() {
         console.error('[API Route] Critical error:', error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
+}
+
+function detectCategory(title: string, originalCategory: string, tags: string[]): string {
+    // If we have a valid category, use it
+    if (originalCategory && originalCategory !== 'Other') {
+        return originalCategory;
+    }
+
+    const lower = title.toLowerCase();
+    const tagStr = tags.join(' ').toLowerCase();
+
+    // Crypto
+    if (lower.match(/bitcoin|btc|ethereum|eth|crypto|solana|sol|dogecoin|doge|nft|defi|blockchain/)) {
+        return 'Crypto';
+    }
+
+    // Politics
+    if (lower.match(/trump|biden|election|president|congress|senate|vote|政治|政府|minister|parliament/)) {
+        return 'Politics';
+    }
+
+    // Sports
+    if (lower.match(/nfl|nba|nhl|mlb|fifa|world cup|olympics|championship|super bowl|playoff|league|team|sport/)) {
+        return 'Sports';
+    }
+
+    // Finance
+    if (lower.match(/stock|market|fed|rate|inflation|gdp|earnings|nasdaq|s&p|dow|treasury|bond|economy/)) {
+        return 'Finance';
+    }
+
+    return 'Other';
+}
+
+return NextResponse.json(processed);
+
+    } catch (error) {
+    console.error('[API Route] Critical error:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+}
 }
 
 function formatVolume(volume: number | null | undefined): string {
