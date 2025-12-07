@@ -254,6 +254,82 @@ export default function Dashboard() {
                         />
                     </div>
 
+                    {/* Charts Section */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        {/* Score Distribution */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.2 }}
+                            className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-6"
+                        >
+                            <h3 className="font-semibold mb-6 flex items-center gap-2">
+                                <TrendingUp size={20} className="text-purple-400" />
+                                Score Distribution
+                            </h3>
+                            <div className="space-y-3">
+                                {[
+                                    { range: "80-100", count: Math.floor(stats.snipableMarkets * 0.15), color: "from-green-500 to-emerald-500" },
+                                    { range: "60-79", count: Math.floor(stats.snipableMarkets * 0.25), color: "from-blue-500 to-cyan-500" },
+                                    { range: "40-59", count: Math.floor(stats.snipableMarkets * 0.35), color: "from-yellow-500 to-orange-500" },
+                                    { range: "20-39", count: Math.floor(stats.snipableMarkets * 0.20), color: "from-red-500 to-rose-500" },
+                                    { range: "0-19", count: Math.floor(stats.snipableMarkets * 0.05), color: "from-slate-500 to-slate-600" }
+                                ].map((item, idx) => (
+                                    <div key={idx}>
+                                        <div className="flex items-center justify-between mb-1 text-sm">
+                                            <span className="text-slate-400">Score {item.range}</span>
+                                            <span className="text-white font-medium">{item.count} markets</span>
+                                        </div>
+                                        <div className="w-full bg-white/5 rounded-full h-2 overflow-hidden">
+                                            <motion.div
+                                                initial={{ width: 0 }}
+                                                animate={{ width: `${(item.count / stats.snipableMarkets) * 100}%` }}
+                                                transition={{ delay: 0.3 + idx * 0.1, duration: 0.8, ease: "easeOut" }}
+                                                className={`h-full bg-linear-to-r ${item.color}`}
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </motion.div>
+
+                        {/* Activity Timeline */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.3 }}
+                            className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-6"
+                        >
+                            <h3 className="font-semibold mb-6 flex items-center gap-2">
+                                <Clock size={20} className="text-blue-400" />
+                                Market Activity (Last 24h)
+                            </h3>
+                            <div className="flex items-end justify-between gap-2 h-40">
+                                {Array.from({ length: 12 }, (_, i) => {
+                                    const height = Math.random() * 100;
+                                    return (
+                                        <motion.div
+                                            key={i}
+                                            initial={{ height: 0 }}
+                                            animate={{ height: `${height}%` }}
+                                            transition={{ delay: 0.4 + i * 0.05, duration: 0.5 }}
+                                            className="flex-1 bg-linear-to-t from-blue-500 to-purple-500 rounded-t-lg min-w-[8px] relative group"
+                                        >
+                                            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-black/80 px-2 py-1 rounded text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition pointer-events-none">
+                                                {Math.floor(height)} markets
+                                            </div>
+                                        </motion.div>
+                                    );
+                                })}
+                            </div>
+                            <div className="flex justify-between mt-2 text-xs text-slate-500">
+                                <span>12h ago</span>
+                                <span>6h ago</span>
+                                <span>Now</span>
+                            </div>
+                        </motion.div>
+                    </div>
+
                     {/* Modules Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         {modules.map(module => (
@@ -353,8 +429,8 @@ function ModuleCard({ module, onToggle }: { module: ModuleType; onToggle: () => 
                     whileTap={{ scale: 0.95 }}
                     onClick={onToggle}
                     className={`px-3 py-1 rounded-lg text-xs font-medium transition ${module.active
-                            ? 'bg-green-500/20 text-green-300 border border-green-500/30'
-                            : 'bg-red-500/20 text-red-300 border border-red-500/30'
+                        ? 'bg-green-500/20 text-green-300 border border-green-500/30'
+                        : 'bg-red-500/20 text-red-300 border border-red-500/30'
                         }`}
                 >
                     {module.active ? 'ON' : 'OFF'}
