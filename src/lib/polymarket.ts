@@ -40,48 +40,48 @@ const GAMMA_API = 'https://gamma-api.polymarket.com';
  */
 export async function fetchPolymarketMarkets(): Promise<ProcessedMarket[]> {
     try {
-        console.log('[API] Fetching markets from Gamma...');
-
-        // Fetch fewer markets initially to ensure reliability (100)
-        // Add User-Agent to avoid WAF blocking
-        const response = await fetch(`${GAMMA_API}/markets?closed=false&limit=100`, {
-            headers: {
-                'Accept': 'application/json',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-            },
-            next: { revalidate: 10 } // Cache for 10 seconds
+        // Fetch from OUR internal API (runs on VPS)
+        // This avoids CORS issues and allows server-side logging
+        const response = await fetch('/api/markets', {
+            cache: 'no-store'
         });
 
         if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`[API Error] Status: ${response.status}, Body: ${errorText.substring(0, 200)}`);
-            throw new Error(`Polymarket API error: ${response.status}`);
+            throw new Error(`Internal API error: ${response.status}`);
         }
 
         const markets = await response.json();
-        console.log(`[API] Successfully fetched ${markets.length} markets`);
 
-        // Lower volume threshold to $100 minimum for broader coverage
-        return markets
-            .filter((m: any) => m.active && m.volume > 100) // Min $100 volume
-            .map((m: any) => ({
-                id: m.id || m.condition_id,
-                title: m.question || m.description,
-                image: m.image || 'https://via.placeholder.com/400x200/1a1a2e/ffffff?text=Polymarket',
-                outcome: m.outcomes?.[0]?.name || 'YES',
-                probability: Math.round((m.outcomes?.[0]?.price || m.clobTokenIds?.[0]?.price || 0.5) * 100),
-                volume: formatVolume(m.volume || 0),
-                liquidity: m.liquidity || 0,
-                endDate: new Date(m.end_date_iso || m.endDate || Date.now() + 86400000),
-                category: m.category || 'Other',
-                tags: m.tags || []
-            }));
+        // Ensure dates are Date objects (JSON returns strings)
+        return markets.map((m: any) => ({
+            ...m,
+            endDate: new Date(m.endDate)
+        }));
+
     } catch (error) {
-        console.error('[Polymarket] Fetch error:', error);
-
-        // Fallback to mock data if API fails
+        console.error('[Client] Failed to fetch markets:', error);
         return generateMockMarkets();
     }
+} return markets
+    .filter((m: any) => m.active && m.volume > 100) // Min $100 volume
+    .map((m: any) => ({
+        id: m.id || m.condition_id,
+        title: m.question || m.description,
+        image: m.image || 'https://via.placeholder.com/400x200/1a1a2e/ffffff?text=Polymarket',
+        outcome: m.outcomes?.[0]?.name || 'YES',
+        probability: Math.round((m.outcomes?.[0]?.price || m.clobTokenIds?.[0]?.price || 0.5) * 100),
+        volume: formatVolume(m.volume || 0),
+        liquidity: m.liquidity || 0,
+        endDate: new Date(m.end_date_iso || m.endDate || Date.now() + 86400000),
+        category: m.category || 'Other',
+        tags: m.tags || []
+    }));
+    } catch (error) {
+    console.error('[Polymarket] Fetch error:', error);
+
+    // Fallback to mock data if API fails
+    return generateMockMarkets();
+}
 }
 
 /**
