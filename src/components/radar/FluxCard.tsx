@@ -16,7 +16,7 @@ export interface MarketData {
 
 export interface SnipingData {
     score: number // 0-100
-    urgency: "LOW" | "MEDIUM" | "HIGH"
+    urgency: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
     whaleActivity: boolean
     description: string
 }
