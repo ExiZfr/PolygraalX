@@ -70,10 +70,10 @@ export default function RadarPage() {
                 };
             });
 
-            // Dynamic filtering: guarantees 25-500 quality markets
+            // Dynamic filtering
             const filtered = filterSnipableMarkets(scored, 25, 500);
 
-            // STRICT CLIENT-SIDE DEDUPLICATION
+            // Client-side deduplication
             const uniqueMap = new Map();
             const uniqueFiltered = filtered.filter(item => {
                 if (uniqueMap.has(item.market.id)) return false;
@@ -104,6 +104,16 @@ export default function RadarPage() {
         listener.toggleFavorite(marketId);
     }
 
+    function parseVolume(volume: string): number {
+        const match = volume.match(/\$([\d.]+)([MK]?)/);
+        if (!match) return 0;
+        const num = parseFloat(match[1]);
+        const unit = match[2];
+        if (unit === 'M') return num * 1000000;
+        if (unit === 'K') return num * 1000;
+        return num;
+    }
+
     // Filtered & Sorted Markets
     const filteredMarkets = markets
         .filter(item => {
@@ -124,20 +134,48 @@ export default function RadarPage() {
             return bVol - aVol;
         });
 
-    function parseVolume(volume: string): number {
-        const match = volume.match(/\$([\d.]+)([MK]?)/);
-        if (!match) return 0;
-        const num = parseFloat(match[1]);
-        const unit = match[2];
-        if (unit === 'M') return num * 1000000;
-        if (unit === 'K') return num * 1000;
-        return num;
+    // GROUPING LOGIC - REVISED (More Aggressive)
+    function groupMarkets(markets: typeof filteredMarkets) {
+        const groups = new Map<string, typeof filteredMarkets[0] & { variants?: typeof markets[0]['market'][] }>();
+
+        markets.forEach(item => {
+            // Aggressive Normalization for grouping
+            const normalizedTitle = item.market.title
+                .toLowerCase()
+                .replace(/[0-9.,%]+/g, '#') // Replace numbers, dots, commas, % with #
+                .replace(/\s+/g, ' ')       // Collapse spaces
+                .trim();
+
+            const key = normalizedTitle;
+
+            if (!groups.has(key)) {
+                groups.set(key, { ...item, variants: [] });
+            } else {
+                const group = groups.get(key)!;
+
+                // Add current market to variants
+                group.variants = group.variants || [];
+                group.variants.push(item.market);
+
+                // Keep best scoring item as the "face"
+                if (item.sniping.score > group.sniping.score) {
+                    group.variants.push(group.market);
+                    group.market = item.market;
+                    group.sniping = item.sniping;
+                }
+            }
+        });
+
+        // Flatten map to array
+        return Array.from(groups.values()).sort((a, b) => b.sniping.score - a.sniping.score);
     }
+
+    const groupedMarkets = groupMarkets(filteredMarkets);
 
     return (
         <div className="min-h-screen bg-[#050505] text-white">
             <div className="p-6">
-                {/* Enhanced Header */}
+                {/* Header */}
                 <div className="max-w-7xl mx-auto mb-8">
                     <motion.div
                         initial={{ opacity: 0, y: -20 }}
@@ -205,9 +243,8 @@ export default function RadarPage() {
                             </div>
                         </div>
 
-                        {/* Enhanced Filters */}
+                        {/* Filters */}
                         <div className="space-y-4">
-                            {/* Search & Sort */}
                             <div className="flex flex-col sm:flex-row gap-3">
                                 <div className="relative flex-1">
                                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
@@ -230,7 +267,6 @@ export default function RadarPage() {
                                 </select>
                             </div>
 
-                            {/* Category & Event Filters - IMPROVED READABILITY */}
                             <div className="flex flex-wrap gap-3">
                                 <div className="flex items-center gap-2 px-4 py-2.5 bg-slate-800/50 rounded-xl border border-white/10">
                                     <Filter size={16} className="text-blue-400" />
@@ -283,10 +319,10 @@ export default function RadarPage() {
                     </motion.div>
                 </div>
 
-                {/* FluxCards Grid with Stagger Animation */}
+                {/* Grid */}
                 <div className="max-w-7xl mx-auto">
                     <AnimatePresence mode="popLayout">
-                        {filteredMarkets.length === 0 && !loading ? (
+                        {groupedMarkets.length === 0 && !loading ? (
                             <motion.div
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
@@ -298,7 +334,7 @@ export default function RadarPage() {
                             </motion.div>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {filteredMarkets.map((item, index) => (
+                                {groupedMarkets.map((item, index) => (
                                     <motion.div
                                         key={item.market.id}
                                         layout
@@ -308,7 +344,6 @@ export default function RadarPage() {
                                         transition={{ delay: index * 0.05, type: "spring" }}
                                         className="relative group"
                                     >
-                                        {/* Favorite Star with Glow */}
                                         <motion.button
                                             whileHover={{ scale: 1.1 }}
                                             whileTap={{ scale: 0.9 }}
@@ -331,10 +366,17 @@ export default function RadarPage() {
                                                 image: item.market.image,
                                                 outcome: item.market.outcome,
                                                 probability: item.market.probability,
-                                                volume: item.market.volume
+                                                volume: item.market.volume,
+                                                liquidity: item.market.liquidity,
+                                                endDate: item.market.endDate,
+                                                category: item.market.category,
+                                                tags: item.market.tags
                                             }}
                                             sniping={item.sniping}
+                                            variants={item.variants}
                                             onSnip={(id) => console.log('[Radar] Sniping:', id)}
+                                            onTrackGroup={(ids) => console.log('[Radar] Tracking Group:', ids)}
+                                            isTracked={favorites.has(item.market.id)}
                                         />
                                     </motion.div>
                                 ))}
