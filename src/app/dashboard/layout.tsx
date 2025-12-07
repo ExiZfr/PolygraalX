@@ -34,7 +34,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 {/* Logo */}
                 <div className="p-6 border-b border-white/5">
                     <h1 className="text-2xl font-bold tracking-tight">
-                        Poly<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">GraalX</span>
+                        Poly<span className="text-transparent bg-clip-text bg-linear-to-r from-blue-400 to-purple-400">GraalX</span>
                     </h1>
                     <p className="text-xs text-slate-500 mt-1">v2.3</p>
                 </div>
@@ -50,8 +50,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                 key={item.href}
                                 onClick={() => router.push(item.href)}
                                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-left ${isActive
-                                        ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
-                                        : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                                    ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                                    : 'text-slate-400 hover:bg-white/5 hover:text-white'
                                     }`}
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}

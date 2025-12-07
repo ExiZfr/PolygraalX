@@ -4,132 +4,77 @@ import { useState, useEffect } from "react";
 import { FluxCard, MarketData, SnipingData } from "@/components/radar/FluxCard";
 import { HelpCircle, Search, XCircle, RefreshCw, Star, Filter } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { fetchPolymarketMarkets, ProcessedMarket } from "@/lib/polymarket";
-import { calculateSnipability, filterSnipableMarkets, EventType, UrgencyLevel } from "@/lib/snipability-algo";
-import { listener, ListenerStatus } from "@/lib/listener";
+// Start listener
+listener.start();
 
-type FilterEventType = EventType | 'all';
-type FilterUrgency = UrgencyLevel | 'ALL';
+// Update listener status every 10s
+const statusInterval = setInterval(() => {
+    setListenerStatus(listener.getStatus());
+}, 10000);
 
-export default function RadarPage() {
-    const [markets, setMarkets] = useState<Array<{ market: ProcessedMarket; sniping: SnipingData & { eventType: EventType } }>>([]);
-    const [loading, setLoading] = useState(true);
-    const [searchQuery, setSearchQuery] = useState("");
-    const [sortBy, setSortBy] = useState<"score" | "volume">("score");
-    const [showHelpModal, setShowHelpModal] = useState(false);
-    const [favorites, setFavorites] = useState<Set<string>>(new Set());
-    const [listenerStatus, setListenerStatus] = useState<ListenerStatus | null>(null);
+return () => {
+    clearInterval(statusInterval);
+    listener.stop();
+};
+    }, []);
 
-    // New filters
-    const [filterEventType, setFilterEventType] = useState<FilterEventType>('all');
-    const [filterUrgency, setFilterUrgency] = useState<FilterUrgency>('ALL');
-
-    // Load markets on mount
-    useEffect(() => {
+// Reload markets every 60 seconds
+useEffect(() => {
+    const interval = setInterval(() => {
         loadMarkets();
+    }, 60000);
+    return () => clearInterval(interval);
+}, []);
 
-        // Start listener
-        listener.start();
+async function loadMarkets() {
+    setLoading(true);
+    try {
+        const rawMarkets = await fetchPolymarketMarkets();
 
-        // Update listener status every 10s
-        const statusInterval = setInterval(() => {
-            setListenerStatus(listener.getStatus());
-        }, 10000);
-
-        return () => {
-            clearInterval(statusInterval);
-            listener.stop();
-        };
-    }, []);
-
-    // Reload markets every 60 seconds
-    useEffect(() => {
-        const interval = setInterval(() => {
-            loadMarkets();
-        }, 60000);
-        return () => clearInterval(interval);
-    }, []);
-
-    async function loadMarkets() {
-        setLoading(true);
-        try {
-            const rawMarkets = await fetchPolymarketMarkets();
-
-            // Calculate snipability scores
-            const scored = rawMarkets.map(market => {
-                const snipability = calculateSnipability(market);
-                return {
-                    market,
-                    sniping: {
-                        score: snipability.score,
-                        urgency: snipability.urgency,
-                        whaleActivity: snipability.whaleActivity,
-                        description: snipability.description,
-                        eventType: snipability.eventType,
-                        factors: snipability.factors
-                    }
-                };
-            });
-
-            // Filter to maintain ~30 snipable markets
-            const filtered = filterSnipableMarkets(scored, 30);
-
-            setMarkets(filtered);
-
-            // Track all markets in listener
-            filtered.forEach(({ market }) => {
-                listener.trackMarket(market, favorites.has(market.id));
-            });
-        } catch (error) {
-            console.error('[Radar] Failed to load markets:', error);
-        } finally {
-            setLoading(false);
-        }
-    }
-
-    function toggleFavorite(marketId: string) {
-        const newFavorites = new Set(favorites);
-        if (newFavorites.has(marketId)) {
-            newFavorites.delete(marketId);
-        } else {
-            newFavorites.add(marketId);
-        }
-        setFavorites(newFavorites);
-        listener.toggleFavorite(marketId);
-    }
-
-    // Filtered & Sorted Markets
-    const filteredMarkets = markets
-        .filter(item => {
-            // Search filter
-            if (!item.market.title.toLowerCase().includes(searchQuery.toLowerCase())) {
-                return false;
-            }
-
-            // Event type filter
-            if (filterEventType !== 'all' && item.sniping.eventType !== filterEventType) {
-                return false;
-            }
-
-            // Urgency filter
-            if (filterUrgency !== 'ALL' && item.sniping.urgency !== filterUrgency) {
-                return false;
-            }
-
-            return true;
-        })
-        .sort((a, b) => {
-            // Favorites always on top
-            if (favorites.has(a.market.id) && !favorites.has(b.market.id)) return -1;
-            if (!favorites.has(a.market.id) && favorites.has(b.market.id)) return 1;
-
-            // Then sort by selected criteria
-            if (sortBy === "score") return b.sniping.score - a.sniping.score;
-
-            const aVol = parseVolume(a.market.volume);
-            const bVol = parseVolume(b.market.volume);
-            return bVol - aVol;
+        // Calculate snipability scores
+        const scored = rawMarkets.map(market => {
+            const snipability = calculateSnipability(market);
+            return {
+                market,
+                sniping: {
+                    score: snipability.score,
+                    urgency: snipability.urgency,
+                    whaleActivity: snipability.whaleActivity,
+                    description: snipability.description,
+                    eventType: snipability.eventType,
+                    factors: snipability.factors
+                }
+            };
         });
+
+        // Filter to maintain ~30 snipable markets
+        const filtered = filterSnipableMarkets(scored, 30);
+
+        setMarkets(filtered);
+
+        // Track all markets in listener
+        filtered.forEach(({ market }) => {
+            listener.trackMarket(market, favorites.has(market.id));
+        });
+    } catch (error) {
+        console.error('[Radar] Failed to load markets:', error);
+    } finally {
+        setLoading(false);
+    }
+}
+
+function toggleFavorite(marketId: string) {
+    const newFavorites = new Set(favorites);
+    if (newFavorites.has(marketId)) {
+        newFavorites.delete(marketId);
+    } else {
+        // Then sort by selected criteria
+        if (sortBy === "score") return b.sniping.score - a.sniping.score;
+
+        const aVol = parseVolume(a.market.volume);
+        const bVol = parseVolume(b.market.volume);
+        return bVol - aVol;
+    });
 
     function parseVolume(volume: string): number {
         const match = volume.match(/\$([\d.]+)([MK]?)/);
@@ -208,9 +153,26 @@ export default function RadarPage() {
 
                 {/* New Filter Row */}
                 <div className="flex flex-wrap gap-3 mb-6">
-                    {/* Event Type Filter */}
+                    {/* Category Filter */}
                     <div className="flex items-center gap-2">
                         <Filter size={16} className="text-slate-500" />
+                        <span className="text-sm text-slate-400">Category:</span>
+                        <select
+                            value={filterCategory}
+                            onChange={(e) => setFilterCategory(e.target.value as FilterCategory)}
+                            className="px-3 py-1.5 bg-slate-900/50 border border-slate-800 rounded text-sm text-white focus:outline-none focus:border-blue-500/50"
+                        >
+                            <option value="All">All Categories</option>
+                            <option value="Crypto">💰 Crypto</option>
+                            <option value="Politics">🏛️ Politics</option>
+                            <option value="Sports">⚽ Sports</option>
+                            <option value="Finance">📈 Finance</option>
+                            <option value="Other">🔮 Other</option>
+                        </select>
+                    </div>
+
+                    {/* Event Type Filter */}
+                    <div className="flex items-center gap-2">
                         <span className="text-sm text-slate-400">Event:</span>
                         <select
                             value={filterEventType}

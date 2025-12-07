@@ -40,8 +40,8 @@ const GAMMA_API = 'https://gamma-api.polymarket.com';
  */
 export async function fetchPolymarketMarkets(): Promise<ProcessedMarket[]> {
     try {
-        // Fetch markets from Gamma API (public endpoint)
-        const response = await fetch(`${GAMMA_API}/markets?closed=false&limit=200`, {
+        // Fetch markets from Gamma API (public endpoint) - increased limit for broader search
+        const response = await fetch(`${GAMMA_API}/markets?closed=false&limit=500`, {
             headers: {
                 'Accept': 'application/json',
             },
@@ -54,9 +54,9 @@ export async function fetchPolymarketMarkets(): Promise<ProcessedMarket[]> {
 
         const markets = await response.json();
 
-        // Process and format markets
+        // Process and format markets - lowered volume threshold to capture more markets
         return markets
-            .filter((m: any) => m.active && m.volume > 1000) // Min $1k volume
+            .filter((m: any) => m.active && m.volume > 500) // Min $500 volume (was $1k)
             .map((m: any) => ({
                 id: m.id || m.condition_id,
                 title: m.question || m.description,

@@ -173,7 +173,7 @@ export function filterSnipableMarkets(markets: Array<{ market: ProcessedMarket; 
     const sorted = markets.sort((a, b) => b.sniping.score - a.sniping.score);
 
     // Take top performers but ensure minimum score threshold
-    const minScore = 45; // Only show markets with score >= 45
+    const minScore = 35; // Lowered from 45 to capture more markets
     const filtered = sorted.filter(m => m.sniping.score >= minScore);
 
     // If we have more than target, take top N
