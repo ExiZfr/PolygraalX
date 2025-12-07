@@ -65,7 +65,8 @@ export default function RadarPage() {
                         urgency: snipability.urgency,
                         whaleActivity: snipability.whaleActivity,
                         description: snipability.description,
-                        eventType: snipability.eventType
+                        eventType: snipability.eventType,
+                        factors: snipability.factors
                     }
                 };
             });
