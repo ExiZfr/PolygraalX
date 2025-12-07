@@ -13,11 +13,15 @@ import {
     Terminal,
     ArrowUpRight,
     ArrowDownRight,
+    Settings,
+    History
 } from "lucide-react";
 import { fetchPolymarketMarkets } from "@/lib/polymarket";
 import { calculateSnipability } from "@/lib/snipability-algo";
 import { filterSnipableMarkets } from "@/lib/dynamic-filter";
 import { ToastNotification, useToast } from "@/components/ToastNotification";
+import { paperStore, PaperProfile } from "@/lib/paper-trading";
+import Link from "next/link";
 
 type LogType = {
     id: number;
@@ -87,6 +91,8 @@ export default function Dashboard() {
         avgScore: 0,
         highestScore: 0
     });
+    const [consoleFilter, setConsoleFilter] = useState<'ALL' | 'EXEC' | 'SCAN' | 'INFO' | 'WARN'>('ALL');
+    const [paperProfile, setPaperProfile] = useState<PaperProfile | null>(null);
 
     const previousMarketCount = useRef(0);
     const { toasts, addToast, removeToast, showMarket } = useToast();
@@ -94,10 +100,12 @@ export default function Dashboard() {
     // Load REAL market data
     useEffect(() => {
         loadRealMetrics();
+        setPaperProfile(paperStore.getProfile());
 
         // Refresh every 60 seconds
         const interval = setInterval(() => {
             loadRealMetrics();
+            setPaperProfile(paperStore.getProfile());
         }, 60000);
 
         // --- CONNECT TO CENTRAL LISTENER ---
@@ -239,12 +247,45 @@ export default function Dashboard() {
                     <motion.div
                         initial={{ opacity: 0, y: -20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-6"
+                        className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4"
                     >
-                        <h1 className="text-3xl font-bold mb-2">
-                            Dashboard <span className="text-transparent bg-clip-text bg-linear-to-r from-blue-400 to-purple-400">PolyGraalX</span>
-                        </h1>
-                        <p className="text-slate-400">Real-time market intelligence & automation</p>
+                        <div>
+                            <h1 className="text-3xl font-bold mb-2">
+                                Dashboard <span className="text-transparent bg-clip-text bg-linear-to-r from-blue-400 to-purple-400">PolyGraalX</span>
+                            </h1>
+                            <p className="text-slate-400">Real-time market intelligence & automation</p>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                            {paperProfile?.active && (
+                                <div className="hidden md:flex flex-col items-end mr-4 animate-pulse">
+                                    <span className="text-xs text-green-400 font-bold uppercase tracking-wider">Paper Mode Active</span>
+                                    <span className="text-sm font-mono text-white">${paperProfile.currentBalance.toFixed(2)}</span>
+                                </div>
+                            )}
+
+                            <Link href="/dashboard/orders">
+                                <motion.button
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
+                                    className="p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition text-slate-300"
+                                    title="Orders History"
+                                >
+                                    <History size={20} />
+                                </motion.button>
+                            </Link>
+
+                            <Link href="/dashboard/settings">
+                                <motion.button
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
+                                    className="p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition text-slate-300"
+                                    title="Settings"
+                                >
+                                    <Settings size={20} />
+                                </motion.button>
+                            </Link>
+                        </div>
                     </motion.div>
 
                     {/* Live Stats */}
@@ -372,33 +413,60 @@ export default function Dashboard() {
                         transition={{ delay: 0.2 }}
                         className="backdrop-blur-xl bg-black/40 border border-white/10 rounded-2xl overflow-hidden"
                     >
-                        <div className="border-b border-white/10 p-4 flex items-center gap-2">
-                            <Terminal size={20} className="text-green-400" />
-                            <h3 className="font-semibold">Live Console</h3>
-                            <div className="ml-auto flex items-center gap-2">
-                                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                                <span className="text-xs text-green-400">LIVE</span>
+                        <div className="border-b border-white/10 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div className="flex items-center gap-2">
+                                <Terminal size={20} className="text-green-400" />
+                                <h3 className="font-semibold">Live Console</h3>
+                                <div className="hidden sm:flex items-center gap-2 ml-4">
+                                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                                    <span className="text-xs text-green-400">LIVE</span>
+                                </div>
+                            </div>
+
+                            {/* Console Filters */}
+                            <div className="flex gap-2">
+                                {['ALL', 'EXEC', 'SCAN', 'INFO', 'WARN'].map((filter) => (
+                                    <button
+                                        key={filter}
+                                        onClick={() => setConsoleFilter(filter as any)}
+                                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all border ${consoleFilter === filter
+                                            ? 'bg-white/20 border-white/40 text-white'
+                                            : 'bg-black/20 border-white/5 text-slate-500 hover:text-slate-300'
+                                            }`}
+                                    >
+                                        {filter}
+                                    </button>
+                                ))}
                             </div>
                         </div>
 
-                        <div className="h-[400px] overflow-y-auto p-4 font-mono text-sm space-y-1">
+                        <div className="h-[400px] overflow-y-auto p-4 font-mono text-sm space-y-1 scrollbar-thin scrollbar-thumb-white/10">
                             <AnimatePresence initial={false}>
-                                {logs.map((log) => (
-                                    <motion.div
-                                        key={log.id}
-                                        initial={{ opacity: 0, x: -20 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        exit={{ opacity: 0 }}
-                                        className={`flex items-start gap-3 ${getLogColor(log.level)}`}
-                                    >
-                                        <span className="text-slate-500 min-w-[70px]">{log.timestamp}</span>
-                                        <span className={`min-w-[60px] font-bold ${getLevelColor(log.level)}`}>
-                                            [{log.level}]
-                                        </span>
-                                        <span className="flex-1">{log.message}</span>
-                                    </motion.div>
-                                ))}
+                                {logs
+                                    .filter(log => {
+                                        if (consoleFilter === 'ALL') return true;
+                                        if (consoleFilter === 'SCAN') return log.message.startsWith('[SCAN]');
+                                        return log.level === consoleFilter;
+                                    })
+                                    .map((log) => (
+                                        <motion.div
+                                            key={log.id}
+                                            initial={{ opacity: 0, x: -20 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            exit={{ opacity: 0 }}
+                                            className={`flex items-start gap-3 border-b border-white/5 pb-1 mb-1 ${getLogColor(log.level)}`}
+                                        >
+                                            <span className="text-slate-600 min-w-[70px] text-xs pt-1">{log.timestamp}</span>
+                                            <span className={`min-w-[50px] font-bold text-xs pt-1 ${getLevelColor(log.level)}`}>
+                                                {log.level}
+                                            </span>
+                                            <span className="flex-1 leading-relaxed break-words">{log.message}</span>
+                                        </motion.div>
+                                    ))}
                             </AnimatePresence>
+                            {logs.length === 0 && (
+                                <div className="text-slate-600 text-center italic mt-10">No logs for filter: {consoleFilter}</div>
+                            )}
                         </div>
                     </motion.div>
                 </div>
