@@ -176,6 +176,21 @@ export function FluxCard({ market, sniping, variants, onSnip, onTrackGroup, isTr
                                     {sniping.score}/100
                                 </div>
                             </div>
+                            <div className="flex flex-wrap gap-2 mt-2">
+                                <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-white/10 text-slate-300 border border-white/5">
+                                    {market.category}
+                                </span>
+                                <span className={cn("px-2 py-0.5 rounded text-[10px] font-medium border",
+                                    sniping.urgency === 'HIGH' ? "bg-red-500/10 text-red-400 border-red-500/20" :
+                                        sniping.urgency === 'MEDIUM' ? "bg-amber-500/10 text-amber-400 border-amber-500/20" :
+                                            "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                                )}>
+                                    {sniping.urgency} URGENCY
+                                </span>
+                                <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                                    {sniping.eventType.replace('_', ' ')}
+                                </span>
+                            </div>
                         </div>
 
                         <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
