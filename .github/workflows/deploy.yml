@@ -13,15 +13,24 @@ jobs:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
 
+      - name: 🔐 Deploy to VPS via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          # Stop script on first error
+          script_stop: true
+          # Increase timeout for long builds
+          command_timeout: 30m
           script: |
-            # 🛑 STOP immediately if any command fails
-            set -e
-            
-            cd ~/polymarkettradingbot
-            
             echo "========================================"
             echo "🚀 STARTING AUTO-DEPLOYMENT"
             echo "========================================"
+            
+            # Go to project dir
+            cd ~/polymarkettradingbot
             
             echo "📥 [1/5] Pulling latest changes..."
             git pull origin main
@@ -34,18 +43,11 @@ jobs:
             npx prisma db push
             
             echo "🏗️ [4/5] Building Next.js app..."
-            # Run build. If it fails, the script stops here due to set -e
-            # The previous version keeps running in PM2
-            if npm run build; then
-                echo "✅ Build success!"
-            else
-                echo "❌ CRITICAL ERROR: Build failed!"
-                echo "⚠️ Check the error logs above in 'Building Next.js app'"
-                echo "⛔ Deployment aborted. Old version is still running."
-                exit 1
-            fi
+            # Try to build. If it fails, script_stop: true will kill the job here
+            npm run build
             
             echo "♻️ [5/5] Restarting Application..."
+            # Use || true to prevent failure if process doesn't exist yet
             pm2 restart polymarket-dashboard || pm2 start npm --name polymarket-dashboard -- start
             
             echo "========================================"
