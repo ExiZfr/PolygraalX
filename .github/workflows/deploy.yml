@@ -20,20 +20,23 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           port: ${{ secrets.SSH_PORT }}
-          # Stop script on first error
           script_stop: true
-          # Increase timeout for long builds
-          command_timeout: 30m
+          debug: true
           script: |
-            echo "========================================"
-            echo "🚀 STARTING AUTO-DEPLOYMENT"
-            echo "========================================"
-            
-            # Go to project dir
+            echo "🔎 Checking working directory..."
+            # Ensure directory exists
+            mkdir -p ~/polymarkettradingbot
             cd ~/polymarkettradingbot
             
+            echo "📂 Current Directory: $(pwd)"
+            
             echo "📥 [1/5] Pulling latest changes..."
-            git pull origin main
+            # Initialize git if not present (just in case)
+            if [ ! -d ".git" ]; then
+                git clone https://github.com/ExiZfr/polymarkettradingbot.git .
+            else
+                git pull origin main
+            fi
             
             echo "📦 [2/5] Installing dependencies..."
             npm install
@@ -43,13 +46,14 @@ jobs:
             npx prisma db push
             
             echo "🏗️ [4/5] Building Next.js app..."
-            # Try to build. If it fails, script_stop: true will kill the job here
             npm run build
             
             echo "♻️ [5/5] Restarting Application..."
-            # Use || true to prevent failure if process doesn't exist yet
+            # Install PM2 globally if missing
+            if ! command -v pm2 &> /dev/null; then
+                npm install -g pm2
+            fi
+            
             pm2 restart polymarket-dashboard || pm2 start npm --name polymarket-dashboard -- start
             
-            echo "========================================"
-            echo "✅ DEPLOYMENT SUCCESSFUL"
-            echo "========================================"
+            echo "✅ Deployment completed successfully!"
