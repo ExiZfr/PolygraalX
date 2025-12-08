@@ -39,10 +39,11 @@ interface FluxCardProps {
     variants?: MarketData[] // NEW: Array of grouped markets if this is a stack
     onSnip?: (id: string) => void
     onTrackGroup?: (ids: string[]) => void // NEW: Track all
+    onToggleFavorite?: (id: string) => void // NEW: Toggle single favorite
     isTracked?: boolean
 }
 
-export function FluxCard({ market, sniping, variants, onSnip, onTrackGroup, isTracked }: FluxCardProps) {
+export function FluxCard({ market, sniping, variants, onSnip, onTrackGroup, onToggleFavorite, isTracked }: FluxCardProps) {
     const [isFlipped, setIsFlipped] = React.useState(false)
 
     const isGroup = variants && variants.length > 0;
@@ -150,7 +151,13 @@ export function FluxCard({ market, sniping, variants, onSnip, onTrackGroup, isTr
                                     </div>
                                 </div>
 
-                                <button className={cn("h-8 w-8 rounded-full flex items-center justify-center transition", isTracked ? "bg-yellow-500 text-black" : "bg-white/5 text-slate-400")}>
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onToggleFavorite?.(market.id);
+                                    }}
+                                    className={cn("h-8 w-8 rounded-full flex items-center justify-center transition hover:scale-110", isTracked ? "bg-yellow-500 text-black" : "bg-white/5 text-slate-400 hover:bg-white/10")}
+                                >
                                     <Star className={cn("h-4 w-4", isTracked && "fill-current")} />
                                 </button>
                             </div>

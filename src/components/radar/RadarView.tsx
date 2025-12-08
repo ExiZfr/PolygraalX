@@ -11,6 +11,7 @@ import {
 import { paperStore } from "@/lib/paper-trading";
 import { FluxCard } from "@/components/radar/FluxCard";
 import { EventType, UrgencyLevel } from "@/lib/snipability-algo";
+import { div } from "framer-motion/client";
 
 // Types for Filters
 type FilterCategory = 'All' | 'Crypto' | 'Politics' | 'Sports' | 'Business' | 'Science' | 'Other';
@@ -80,11 +81,12 @@ const HelpModal = ({ onClose }: { onClose: () => void }) => (
 );
 
 // --- STACK COMPONENT ---
-const StackedGroup = ({ group, isExpanded, onToggle, onSnip, favorites }: {
+const StackedGroup = ({ group, isExpanded, onToggle, onSnip, onToggleFavorite, favorites }: {
     group: EventGroup,
     isExpanded: boolean,
     onToggle: () => void,
     onSnip: (id: string, score: number) => void,
+    onToggleFavorite: (id: string) => void,
     favorites: Set<string>
 }) => {
     // If only 1 market, just show the card directly, no stack effect needed
@@ -95,6 +97,7 @@ const StackedGroup = ({ group, isExpanded, onToggle, onSnip, favorites }: {
                 market={item.market}
                 sniping={item.analysis}
                 onSnip={(id) => onSnip(id, item.analysis.score)}
+                onToggleFavorite={onToggleFavorite}
                 isTracked={favorites.has(item.market.id)}
             />
         );
@@ -138,6 +141,7 @@ const StackedGroup = ({ group, isExpanded, onToggle, onSnip, favorites }: {
                                     market={item.market}
                                     sniping={item.analysis}
                                     onSnip={(id) => onSnip(id, item.analysis.score)}
+                                    onToggleFavorite={onToggleFavorite}
                                     isTracked={favorites.has(item.market.id)}
                                 />
                             ))}
@@ -435,23 +439,23 @@ export default function RadarView() {
                 <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
             </button>
         </div>
-            </div >
 
-        {/* CONTENT GRID */ }
-        < div className = "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8" >
-            <AnimatePresence>
-                {groupedMarkets.map(group => (
-                    <StackedGroup
-                        key={group.eventSlug}
-                        group={group}
-                        isExpanded={expandedGroups.has(group.eventSlug)}
-                        onToggle={() => toggleGroup(group.eventSlug)}
-                        onSnip={handleSnip}
-                        favorites={favorites}
-                    />
-                ))}
-            </AnimatePresence>
-            </div >
+            {/* CONTENT GRID */ }
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+        <AnimatePresence>
+            {groupedMarkets.map(group => (
+                <StackedGroup
+                    key={group.eventSlug}
+                    group={group}
+                    isExpanded={expandedGroups.has(group.eventSlug)}
+                    onToggle={() => toggleGroup(group.eventSlug)}
+                    onSnip={handleSnip}
+                    onToggleFavorite={toggleFavorite}
+                    favorites={favorites}
+                />
+            ))}
+        </AnimatePresence>
+    </div>
 
     {
         groupedMarkets.length === 0 && !isLoading && (
