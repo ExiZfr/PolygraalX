@@ -23,6 +23,7 @@ export interface SnipingData {
     urgency: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
     whaleActivity: boolean
     description: string
+    eventType: string; // Add this line
     factors?: {
         timeScore: number;
         volumeScore: number;
