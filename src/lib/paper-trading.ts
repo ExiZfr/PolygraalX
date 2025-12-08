@@ -420,6 +420,3 @@ export const paperStore = {
         };
     }
 };
-
-// Export types for use in components
-export type { PaperTradingSettings, PaperOrder, PaperProfile, PaperStats };
