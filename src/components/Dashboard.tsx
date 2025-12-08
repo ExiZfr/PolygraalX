@@ -424,7 +424,7 @@ export default function Dashboard() {
                             </div>
 
                             {/* Console Filters */}
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 flex-wrap">
                                 {['ALL', 'EXEC', 'SCAN', 'INFO', 'WARN'].map((filter) => (
                                     <button
                                         key={filter}

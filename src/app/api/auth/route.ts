@@ -67,15 +67,16 @@ export async function POST(request: Request) {
         try {
             const isAdmin = telegramId === ADMIN_ID;
 
-            // Upsert: Create if doesn't exist, Update if it does
-            const user = await prisma.user.upsert({
+            console.log(`[Auth] Attempting DB Upsert for ${telegramId} (Admin: ${isAdmin})`);
+
+            // Wrap DB call with timeout to prevent infinite hanging
+            const dbCall = prisma.user.upsert({
                 where: { id: telegramId },
                 update: {
                     username: data.username,
                     firstName: data.first_name,
                     lastName: data.last_name,
                     photoUrl: data.photo_url,
-                    // Force Admin rights if ID matches
                     ...(isAdmin ? { role: 'admin', isActive: true } : {})
                 },
                 create: {
@@ -84,10 +85,19 @@ export async function POST(request: Request) {
                     firstName: data.first_name,
                     lastName: data.last_name,
                     photoUrl: data.photo_url,
-                    isActive: isAdmin, // Auto-activate Admin
+                    isActive: isAdmin,
                     role: isAdmin ? 'admin' : 'user'
                 }
-            })
+            });
+
+            // 5 second timeout
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error("Database Timeout (5s)")), 5000)
+            );
+
+            // Race DB vs Timeout
+            const user: any = await Promise.race([dbCall, timeoutPromise]);
+            console.log(`[Auth] DB Success for ${telegramId}`);
 
             // Check Access Permissions
             const hasAccess = user.isActive || isAdmin
@@ -101,8 +111,12 @@ export async function POST(request: Request) {
 
         } catch (dbError) {
             console.error("Database Login Error:", dbError)
-            // Fail-safe
-            if (telegramId !== ADMIN_ID) {
+
+            // FAIL-SAFE: Allow Admin even if DB dies
+            if (telegramId === ADMIN_ID) {
+                console.warn("⚠️ EMERGENCY ADMIN LOGIN - Bypassing Database Check ⚠️");
+                // We proceed to set the cookie below
+            } else {
                 return NextResponse.json(
                     { error: "Database Connection Failed" },
                     { status: 500 }
