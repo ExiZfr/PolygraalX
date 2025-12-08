@@ -211,11 +211,20 @@ export default function RadarView() {
     const [search, setSearch] = useState("");
     const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
     const [showHelp, setShowHelp] = useState(false);
+    const [openFilter, setOpenFilter] = useState<'category' | 'urgency' | 'type' | null>(null);
 
     // Filter State
     const [activeCategory, setActiveCategory] = useState<FilterCategory>('All');
     const [activeType, setActiveType] = useState<FilterType>('ALL');
     const [activeUrgency, setActiveUrgency] = useState<FilterUrgency>('ALL');
+
+    // Close dropdown on click outside
+    const handleFilterSelect = (type: 'category' | 'urgency' | 'type', value: any) => {
+        if (type === 'category') setActiveCategory(value);
+        if (type === 'urgency') setActiveUrgency(value);
+        if (type === 'type') setActiveType(value);
+        setOpenFilter(null);
+    };
 
     const handleSnip = (id: string, score: number) => {
         const market = markets.find(m => m.market.id === id);
@@ -363,87 +372,105 @@ export default function RadarView() {
                 {/* Filters Row */}
                 <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 scrollbar-none px-2 md:px-0">
                     {/* Category Filter */}
-                    <div className="relative group/menu">
-                        <button className={`h-10 px-4 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${activeCategory !== 'All' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'}`}>
+                    <div className="relative">
+                        <button
+                            onClick={() => setOpenFilter(openFilter === 'category' ? null : 'category')}
+                            className={`h-10 px-4 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${activeCategory !== 'All' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'}`}
+                        >
                             {activeCategory === 'All' ? 'Category' : activeCategory}
-                            <ChevronDown size={14} className="opacity-50" />
+                            <ChevronDown size={14} className={`opacity-50 transition-transform ${openFilter === 'category' ? 'rotate-180' : ''}`} />
                         </button>
-                        <div className="absolute top-full right-0 mt-2 w-40 bg-[#15171E] border border-white/10 rounded-xl shadow-xl p-1 hidden group-hover/menu:block z-50">
-                            {(['All', 'Crypto', 'Politics', 'Sports', 'Business'] as FilterCategory[]).map(cat => (
-                                <button key={cat} onClick={() => setActiveCategory(cat)} className="w-full text-left px-3 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-white/5 transition-colors">{cat}</button>
-                            ))}
-                        </div>
+                        {openFilter === 'category' && (
+                            <div className="absolute top-full left-0 mt-2 w-40 bg-[#15171E] border border-white/10 rounded-xl shadow-xl p-1 z-50">
+                                {(['All', 'Crypto', 'Politics', 'Sports', 'Business'] as FilterCategory[]).map(cat => (
+                                    <button key={cat} onClick={() => handleFilterSelect('category', cat)} className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-colors ${activeCategory === cat ? 'bg-indigo-500/20 text-indigo-400' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>{cat}</button>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     {/* Urgency Filter */}
-                    <div className="relative group/menu">
-                        <button className={`h-10 px-4 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${activeUrgency !== 'ALL' ? 'bg-red-500 text-white shadow-lg shadow-red-500/20' : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'}`}>
+                    <div className="relative">
+                        <button
+                            onClick={() => setOpenFilter(openFilter === 'urgency' ? null : 'urgency')}
+                            className={`h-10 px-4 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${activeUrgency !== 'ALL' ? 'bg-red-500 text-white shadow-lg shadow-red-500/20' : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'}`}
+                        >
                             {activeUrgency === 'ALL' ? 'Urgency' : activeUrgency}
-                            <ChevronDown size={14} className="opacity-50" />
+                            <ChevronDown size={14} className={`opacity-50 transition-transform ${openFilter === 'urgency' ? 'rotate-180' : ''}`} />
                         </button>
-                        <div className="absolute top-full right-0 mt-2 w-40 bg-[#15171E] border border-white/10 rounded-xl shadow-xl p-1 hidden group-hover/menu:block z-50">
-                            {(['ALL', 'HIGH', 'MEDIUM', 'LOW'] as FilterUrgency[]).map(urg => (
-                                <button key={urg} onClick={() => setActiveUrgency(urg)} className="w-full text-left px-3 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-white/5 transition-colors">{urg}</button>
-                            ))}
-                        </div>
+                        {openFilter === 'urgency' && (
+                            <div className="absolute top-full left-0 mt-2 w-40 bg-[#15171E] border border-white/10 rounded-xl shadow-xl p-1 z-50">
+                                {(['ALL', 'HIGH', 'MEDIUM', 'LOW'] as FilterUrgency[]).map(urg => (
+                                    <button key={urg} onClick={() => handleFilterSelect('urgency', urg)} className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-colors ${activeUrgency === urg ? 'bg-red-500/20 text-red-400' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>{urg === 'ALL' ? 'All' : urg}</button>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     {/* Type Filter */}
-                    <div className="relative group/menu">
-                        <button className={`h-10 px-4 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${activeType !== 'ALL' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'}`}>
-                            {activeType === 'ALL' ? 'Type' : 'Source'}
-                            <ChevronDown size={14} className="opacity-50" />
+                    <div className="relative">
+                        <button
+                            onClick={() => setOpenFilter(openFilter === 'type' ? null : 'type')}
+                            className={`h-10 px-4 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${activeType !== 'ALL' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'}`}
+                        >
+                            {activeType === 'ALL' ? 'Type' : activeType.replace('_', ' ')}
+                            <ChevronDown size={14} className={`opacity-50 transition-transform ${openFilter === 'type' ? 'rotate-180' : ''}`} />
                         </button>
-                        <div className="absolute top-full right-0 mt-2 w-48 bg-[#15171E] border border-white/10 rounded-xl shadow-xl p-1 hidden group-hover/menu:block z-50">
-                            {(['ALL', 'new_market', 'price_surge', 'whale_volume', 'social_hype'] as FilterType[]).map(type => (
-                                <button key={type} onClick={() => setActiveType(type)} className="w-full text-left px-3 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-white/5 transition-colors">{type === 'ALL' ? 'All Types' : type.replace('_', ' ')}</button>
-                            ))}
-                        </div>
+                        {openFilter === 'type' && (
+                            <div className="absolute top-full left-0 mt-2 w-48 bg-[#15171E] border border-white/10 rounded-xl shadow-xl p-1 z-50">
+                                {(['ALL', 'new_market', 'price_surge', 'whale_volume', 'social_hype'] as FilterType[]).map(type => (
+                                    <button key={type} onClick={() => handleFilterSelect('type', type)} className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-colors ${activeType === type ? 'bg-amber-500/20 text-amber-400' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>{type === 'ALL' ? 'All Types' : type.replace('_', ' ')}</button>
+                                ))}
+                            </div>
+                        )}
                     </div>
-
-                    <button
-                        onClick={() => refreshMarkets()}
-                        disabled={isLoading}
-                        className="h-10 w-10 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
-                    >
-                        <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
-                    </button>
                 </div>
             </div>
 
-            {/* CONTENT GRID */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-                <AnimatePresence>
-                    {groupedMarkets.map(group => (
-                        <StackedGroup
-                            key={group.eventSlug}
-                            group={group}
-                            isExpanded={expandedGroups.has(group.eventSlug)}
-                            onToggle={() => toggleGroup(group.eventSlug)}
-                            onSnip={handleSnip}
-                            favorites={favorites}
-                        />
-                    ))}
-                </AnimatePresence>
-            </div>
-
-            {groupedMarkets.length === 0 && !isLoading && (
-                <div className="flex flex-col items-center justify-center py-24 text-slate-500 opacity-50">
-                    <Layers size={64} className="mb-4 text-slate-700" />
-                    <p className="text-lg font-medium">No active opportunities found</p>
-                    <p className="text-sm">Try adjusting your filters</p>
-                </div>
-            )}
-
-            {/* HELP BUTTON */}
-            {/* HELP BUTTON - Fixed position with high z-index */}
             <button
-                onClick={() => setShowHelp(true)}
-                style={{ position: 'fixed', bottom: '2rem', left: '2rem', zIndex: 9999 }}
-                className="h-14 w-14 bg-gradient-to-br from-orange-500 to-red-600 hover:from-orange-400 hover:to-red-500 rounded-full flex items-center justify-center text-white shadow-2xl shadow-orange-500/30 transition-all duration-300 group hover:scale-110"
+                onClick={() => refreshMarkets()}
+                disabled={isLoading}
+                className="h-10 w-10 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
             >
-                <HelpCircle size={26} className="group-hover:rotate-12 transition-transform" />
+                <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
             </button>
         </div>
+            </div >
+
+        {/* CONTENT GRID */ }
+        < div className = "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8" >
+            <AnimatePresence>
+                {groupedMarkets.map(group => (
+                    <StackedGroup
+                        key={group.eventSlug}
+                        group={group}
+                        isExpanded={expandedGroups.has(group.eventSlug)}
+                        onToggle={() => toggleGroup(group.eventSlug)}
+                        onSnip={handleSnip}
+                        favorites={favorites}
+                    />
+                ))}
+            </AnimatePresence>
+            </div >
+
+    {
+        groupedMarkets.length === 0 && !isLoading && (
+            <div className="flex flex-col items-center justify-center py-24 text-slate-500 opacity-50">
+                <Layers size={64} className="mb-4 text-slate-700" />
+                <p className="text-lg font-medium">No active opportunities found</p>
+                <p className="text-sm">Try adjusting your filters</p>
+            </div>
+        )
+    }
+
+    {/* HELP BUTTON - Bottom RIGHT to avoid sidebar */ }
+    <button
+        onClick={() => setShowHelp(true)}
+        style={{ position: 'fixed', bottom: '2rem', right: '2rem', zIndex: 9999 }}
+        className="h-14 w-14 bg-gradient-to-br from-orange-500 to-red-600 hover:from-orange-400 hover:to-red-500 rounded-full flex items-center justify-center text-white shadow-2xl shadow-orange-500/30 transition-all duration-300 group hover:scale-110"
+    >
+        <HelpCircle size={26} className="group-hover:rotate-12 transition-transform" />
+    </button>
+        </div >
     );
 }
