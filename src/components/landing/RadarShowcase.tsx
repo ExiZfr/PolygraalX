@@ -87,8 +87,8 @@ export default function RadarShowcase() {
                 </motion.div>
 
                 {/* Marquee Row 1 */}
-                <div className="relative">
-                    <div className="flex animate-marquee">
+                <div className="relative w-full overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                    <div className="flex animate-marquee hover:[animation-play-state:paused]">
                         {[...markets, ...markets].map((market, i) => (
                             <MarketCard key={`row1-${i}`} market={market} />
                         ))}
@@ -96,8 +96,8 @@ export default function RadarShowcase() {
                 </div>
 
                 {/* Marquee Row 2 - Reverse */}
-                <div className="relative mt-4" style={{ direction: 'rtl' }}>
-                    <div className="flex animate-marquee" style={{ direction: 'ltr' }}>
+                <div className="relative mt-4 w-full overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden" style={{ direction: 'rtl' }}>
+                    <div className="flex animate-marquee hover:[animation-play-state:paused]" style={{ direction: 'ltr' }}>
                         {[...markets.slice(4), ...markets.slice(0, 4), ...markets.slice(4), ...markets.slice(0, 4)].map((market, i) => (
                             <MarketCard key={`row2-${i}`} market={market} />
                         ))}
