@@ -2,21 +2,30 @@
 
 import { motion } from "framer-motion";
 import { Wallet, TrendingUp, History, PieChart, Shield } from "lucide-react";
-
-export type PaperProfile = {
-    balance: number;
-    pnl: number;
-    activePositions: number;
-    tradeHistory: any[];
-};
+import { PaperProfile } from "@/lib/paper-trading";
 
 export default function PaperTradingWidget({ profile }: { profile: PaperProfile | null }) {
     if (!profile) return null;
 
     const stats = [
-        { label: "Paper Balance", value: `$${profile.balance.toFixed(2)}`, icon: Wallet, color: "text-blue-400" },
-        { label: "Unrealized PnL", value: `$${profile.pnl.toFixed(2)}`, icon: TrendingUp, color: profile.pnl >= 0 ? "text-green-400" : "text-red-400" },
-        { label: "Active Positions", value: profile.activePositions, icon: PieChart, color: "text-purple-400" },
+        {
+            label: "Paper Balance",
+            value: `$${profile.currentBalance.toFixed(2)}`,
+            icon: Wallet,
+            color: "text-blue-400"
+        },
+        {
+            label: "Total PnL",
+            value: `$${profile.totalPnL.toFixed(2)}`,
+            icon: TrendingUp,
+            color: profile.totalPnL >= 0 ? "text-green-400" : "text-red-400"
+        },
+        {
+            label: "Win Rate",
+            value: `${profile.winRate.toFixed(1)}%`,
+            icon: PieChart,
+            color: "text-purple-400"
+        },
     ];
 
     return (
@@ -31,12 +40,15 @@ export default function PaperTradingWidget({ profile }: { profile: PaperProfile 
                         <p className="text-xs text-slate-500">Risk-free simulation mode</p>
                     </div>
                 </div>
-                <div className="px-2 py-1 bg-green-500/10 border border-green-500/20 text-green-400 text-xs font-bold rounded uppercase tracking-wider">
-                    Active
+                <div className={`px-2 py-1 border text-xs font-bold rounded uppercase tracking-wider ${profile.active
+                        ? 'bg-green-500/10 border-green-500/20 text-green-400'
+                        : 'bg-slate-500/10 border-slate-500/20 text-slate-400'
+                    }`}>
+                    {profile.active ? 'Active' : 'Paused'}
                 </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-4 flex-1">
                 {stats.map((stat, i) => (
                     <div key={i} className="bg-white/[0.02] p-4 rounded-xl flex items-center justify-between group hover:bg-white/[0.04] transition-colors">
                         <div className="flex items-center gap-3 text-slate-400 group-hover:text-slate-300">
@@ -48,6 +60,16 @@ export default function PaperTradingWidget({ profile }: { profile: PaperProfile 
                         </div>
                     </div>
                 ))}
+
+                <div className="bg-white/[0.02] p-4 rounded-xl flex items-center justify-between group hover:bg-white/[0.04] transition-colors">
+                    <div className="flex items-center gap-3 text-slate-400 group-hover:text-slate-300">
+                        <History size={18} />
+                        <span className="text-sm font-medium">Total Trades</span>
+                    </div>
+                    <div className="font-mono font-bold text-lg text-white">
+                        {profile.tradesCount}
+                    </div>
+                </div>
             </div>
 
             <div className="mt-6 pt-6 border-t border-white/5">

@@ -5,13 +5,13 @@ import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import OverviewStats from "@/components/dashboard/OverviewStats";
 import ActiveModules, { ModuleType } from "@/components/dashboard/ActiveModules";
 import ConsoleLogs, { LogType } from "@/components/dashboard/ConsoleLogs";
-import PaperTradingWidget, { PaperProfile } from "@/components/dashboard/PaperTradingWidget";
+import PaperTradingWidget from "@/components/dashboard/PaperTradingWidget";
 import { Radar, Zap, Users } from "lucide-react";
 
 import { fetchPolymarketMarkets } from "@/lib/polymarket";
 import { calculateSnipability } from "@/lib/snipability-algo";
 import { ToastNotification, useToast } from "@/components/ToastNotification";
-import { paperStore } from "@/lib/paper-trading";
+import { paperStore, PaperProfile } from "@/lib/paper-trading";
 
 const MODULES_CONFIG: ModuleType[] = [
     {
@@ -83,9 +83,9 @@ export default function Dashboard() {
         // For now, we simulate logs to show UI activity
         const mockLogInterval = setInterval(() => {
             if (Math.random() > 0.7) {
-                const types: LogType['level'][] = ['INFO', 'SCAN', 'MARKET'];
+                const types: LogType['level'][] = ['INFO', 'INFO', 'MARKET'];
                 const type = types[Math.floor(Math.random() * types.length)];
-                addLog(type, `System check: ${type === 'SCAN' ? 'Scanning batch #24' : 'Optimal latency verified'}`);
+                addLog(type, `System check: ${type === 'INFO' ? 'Scanning batch #24' : 'Optimal latency verified'}`);
             }
         }, 5000);
 
@@ -159,7 +159,7 @@ export default function Dashboard() {
                 </div>
             </div>
 
-            <ToastNotification toasts={toasts} removeToast={removeToast} />
+            <ToastNotification toasts={toasts} onRemove={removeToast} />
         </DashboardLayout>
     );
 }
