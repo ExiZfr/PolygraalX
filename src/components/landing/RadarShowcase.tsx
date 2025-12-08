@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { TrendingUp, TrendingDown, Clock, Zap } from "lucide-react";
+import { useRef, useState, useEffect } from "react";
 
 const markets = [
     { title: "Trump wins 2024", odds: "67%", change: "+5.2%", trend: "up", volume: "$4.2M" },
@@ -56,6 +57,58 @@ function MarketCard({ market }: { market: typeof markets[0] }) {
 }
 
 export default function RadarShowcase() {
+    const scrollRef = useRef<HTMLDivElement>(null);
+    const [isPaused, setIsPaused] = useState(false);
+    const scrollAccumulator = useRef(0);
+
+    useEffect(() => {
+        const container = scrollRef.current;
+        if (!container) return;
+
+        // Initialize scroll position to the middle set
+        const initScroll = () => {
+            const oneSetWidth = container.scrollWidth / 3;
+            if (container.scrollLeft < 100) { // Only set if near start (initial load)
+                container.scrollLeft = oneSetWidth;
+            }
+        };
+
+        // Small delay to ensure layout is ready
+        const timer = setTimeout(initScroll, 100);
+
+        let animationFrameId: number;
+
+        const animate = () => {
+            if (container) {
+                const oneSetWidth = container.scrollWidth / 3;
+
+                // Handle wrapping
+                if (container.scrollLeft >= 2 * oneSetWidth) {
+                    container.scrollLeft -= oneSetWidth;
+                } else if (container.scrollLeft <= 0.5 * oneSetWidth) {
+                    container.scrollLeft += oneSetWidth;
+                }
+
+                // Auto-scroll
+                if (!isPaused) {
+                    scrollAccumulator.current += 0.5; // Adjust speed here
+                    if (scrollAccumulator.current >= 1) {
+                        container.scrollLeft += 1;
+                        scrollAccumulator.current -= 1;
+                    }
+                }
+            }
+            animationFrameId = requestAnimationFrame(animate);
+        };
+
+        animationFrameId = requestAnimationFrame(animate);
+
+        return () => {
+            cancelAnimationFrame(animationFrameId);
+            clearTimeout(timer);
+        };
+    }, [isPaused]);
+
     return (
         <section id="how-it-works" className="relative py-24 sm:py-32 overflow-hidden">
             {/* Background */}
@@ -86,11 +139,18 @@ export default function RadarShowcase() {
                     </p>
                 </motion.div>
 
-                <div className="w-full overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                <div
+                    ref={scrollRef}
+                    className="w-full overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden cursor-grab active:cursor-grabbing"
+                    onMouseEnter={() => setIsPaused(true)}
+                    onMouseLeave={() => setIsPaused(false)}
+                    onTouchStart={() => setIsPaused(true)}
+                    onTouchEnd={() => setIsPaused(false)}
+                >
                     {/* Marquee Row 1 */}
                     <div className="relative w-max">
-                        <div className="flex animate-marquee hover:[animation-play-state:paused]">
-                            {[...markets, ...markets].map((market, i) => (
+                        <div className="flex">
+                            {[...markets, ...markets, ...markets].map((market, i) => (
                                 <MarketCard key={`row1-${i}`} market={market} />
                             ))}
                         </div>
@@ -98,8 +158,8 @@ export default function RadarShowcase() {
 
                     {/* Marquee Row 2 - Reverse */}
                     <div className="relative mt-4 w-max" style={{ direction: 'rtl' }}>
-                        <div className="flex animate-marquee hover:[animation-play-state:paused]" style={{ direction: 'ltr' }}>
-                            {[...markets.slice(4), ...markets.slice(0, 4), ...markets.slice(4), ...markets.slice(0, 4)].map((market, i) => (
+                        <div className="flex" style={{ direction: 'ltr' }}>
+                            {[...markets.slice(4), ...markets.slice(0, 4), ...markets.slice(4), ...markets.slice(0, 4), ...markets.slice(4), ...markets.slice(0, 4)].map((market, i) => (
                                 <MarketCard key={`row2-${i}`} market={market} />
                             ))}
                         </div>
