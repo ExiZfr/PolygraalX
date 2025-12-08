@@ -440,7 +440,7 @@ export default function RadarView() {
             </button>
         </div>
 
-            {/* CONTENT GRID */ }
+            {/* CONTENT GRID */}
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
         <AnimatePresence>
             {groupedMarkets.map(group => (
@@ -467,7 +467,7 @@ export default function RadarView() {
         )
     }
 
-    {/* HELP BUTTON - Bottom RIGHT to avoid sidebar */ }
+    {/* HELP BUTTON - Bottom RIGHT to avoid sidebar */}
     <button
         onClick={() => setShowHelp(true)}
         style={{ position: 'fixed', bottom: '2rem', right: '2rem', zIndex: 9999 }}
@@ -475,6 +475,6 @@ export default function RadarView() {
     >
         <HelpCircle size={26} className="group-hover:rotate-12 transition-transform" />
     </button>
-        </div >
+        </div>
     );
 }
