@@ -86,21 +86,23 @@ export default function RadarShowcase() {
                     </p>
                 </motion.div>
 
-                {/* Marquee Row 1 */}
-                <div className="relative w-full overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-                    <div className="flex animate-marquee hover:[animation-play-state:paused]">
-                        {[...markets, ...markets].map((market, i) => (
-                            <MarketCard key={`row1-${i}`} market={market} />
-                        ))}
+                <div className="w-full overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                    {/* Marquee Row 1 */}
+                    <div className="relative w-max">
+                        <div className="flex animate-marquee hover:[animation-play-state:paused]">
+                            {[...markets, ...markets].map((market, i) => (
+                                <MarketCard key={`row1-${i}`} market={market} />
+                            ))}
+                        </div>
                     </div>
-                </div>
 
-                {/* Marquee Row 2 - Reverse */}
-                <div className="relative mt-4 w-full overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden" style={{ direction: 'rtl' }}>
-                    <div className="flex animate-marquee hover:[animation-play-state:paused]" style={{ direction: 'ltr' }}>
-                        {[...markets.slice(4), ...markets.slice(0, 4), ...markets.slice(4), ...markets.slice(0, 4)].map((market, i) => (
-                            <MarketCard key={`row2-${i}`} market={market} />
-                        ))}
+                    {/* Marquee Row 2 - Reverse */}
+                    <div className="relative mt-4 w-max" style={{ direction: 'rtl' }}>
+                        <div className="flex animate-marquee hover:[animation-play-state:paused]" style={{ direction: 'ltr' }}>
+                            {[...markets.slice(4), ...markets.slice(0, 4), ...markets.slice(4), ...markets.slice(0, 4)].map((market, i) => (
+                                <MarketCard key={`row2-${i}`} market={market} />
+                            ))}
+                        </div>
                     </div>
                 </div>
 
