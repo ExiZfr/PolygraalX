@@ -107,13 +107,7 @@ export default function Hero() {
                         </span>
                     </Link>
 
-                    <Link
-                        href="/dashboard"
-                        className="btn-secondary flex items-center gap-3 text-base sm:text-lg"
-                    >
-                        <BarChart3 size={20} className="text-indigo-400" />
-                        View Dashboard
-                    </Link>
+
                 </motion.div>
 
                 {/* Trust Indicators */}

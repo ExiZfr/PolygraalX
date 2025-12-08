@@ -51,12 +51,7 @@ export default function CTA() {
                             </span>
                         </Link>
 
-                        <Link
-                            href="/dashboard"
-                            className="btn-secondary flex items-center gap-3 text-base sm:text-lg w-full sm:w-auto justify-center"
-                        >
-                            Explore Dashboard
-                        </Link>
+
                     </div>
 
                     {/* Trust */}
