@@ -50,24 +50,14 @@ NGINX_AVAILABLE="/etc/nginx/sites-available"
 NGINX_ENABLED="/etc/nginx/sites-enabled"
 REDIRECT_CONF="polygraalx-redirect"
 
-# Create nginx redirect config
+# Create nginx redirect config (Cloudflare handles SSL)
 sudo tee "$NGINX_AVAILABLE/$REDIRECT_CONF" > /dev/null << 'NGINX_EOF'
 # Redirect polygraalx.app to app.polygraalx.app
+# Cloudflare handles SSL termination, so we only need port 80
 server {
     listen 80;
     listen [::]:80;
     server_name polygraalx.app www.polygraalx.app;
-    return 301 https://app.polygraalx.app$request_uri;
-}
-
-server {
-    listen 443 ssl http2;
-    listen [::]:443 ssl http2;
-    server_name polygraalx.app www.polygraalx.app;
-
-    ssl_certificate /etc/letsencrypt/live/polygraalx.app/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/polygraalx.app/privkey.pem;
-
     return 301 https://app.polygraalx.app$request_uri;
 }
 NGINX_EOF
