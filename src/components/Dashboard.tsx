@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import { useState, useEffect } from "react";
 import OverviewStats from "@/components/dashboard/OverviewStats";
 import ActiveModules, { ModuleType } from "@/components/dashboard/ActiveModules";
 import ConsoleLogs, { LogType } from "@/components/dashboard/ConsoleLogs";
@@ -142,7 +141,7 @@ export default function Dashboard() {
     }
 
     return (
-        <DashboardLayout>
+        <div className="space-y-6">
             <OverviewStats stats={stats} />
             <ActiveModules modules={modules} />
 
@@ -160,6 +159,6 @@ export default function Dashboard() {
             </div>
 
             <ToastNotification toasts={toasts} onRemove={removeToast} />
-        </DashboardLayout>
+        </div>
     );
 }
