@@ -27,32 +27,21 @@ jobs:
             echo "🚀 STARTING AUTO-DEPLOYMENT"
             echo "========================================"
             
-            # Define variables
-            OLD_DIR=~/polymarkettradingbot
-            NEW_DIR=~/PolygraalX
-            APP_NAME="PolygraalX"
-
-            # 1. Handle Directory Rename (Migration)
-            if [ -d "$OLD_DIR" ] && [ ! -d "$NEW_DIR" ]; then
-              echo "🚚 [0/5] Renaming directory from $OLD_DIR to $NEW_DIR..."
-              mv "$OLD_DIR" "$NEW_DIR"
-            fi
-
-            # Create new directory if it doesn't exist (fresh install or after rename)
-            if [ ! -d "$NEW_DIR" ]; then
-               echo "📂 [0/5] Creating directory $NEW_DIR..."
-               git clone https://github.com/${{ github.repository }} $NEW_DIR
-            fi
-
-            cd $NEW_DIR
+            # Application Directory
+            APP_DIR=~/PolygraalX
             
-            echo "📥 [1/5] Syncing with GitHub (force)..."
-            # Update remote URL in case repository name changed
-            git remote set-url origin https://github.com/${{ github.repository }}
-            
-            # Force sync - discard any local changes on VPS
-            git fetch origin main
-            git reset --hard origin/main
+            # Check if directory exists
+            if [ -d "$APP_DIR" ]; then
+              echo "📂 Directory $APP_DIR exists."
+              cd $APP_DIR
+              echo "📥 [1/5] Syncing with GitHub (fetch & reset)..."
+              git fetch origin main
+              git reset --hard origin/main
+            else
+              echo "📂 Directory $APP_DIR does not exist. Cloning..."
+              git clone git@github.com:ExiZfr/PolygraalX.git $APP_DIR
+              cd $APP_DIR
+            fi
             
             echo "📦 [2/5] Installing dependencies..."
             npm install
@@ -65,13 +54,13 @@ jobs:
             npm run build
             
             echo "♻️ [5/5] Restarting Application..."
-            # Check if old process exists and delete it
-            if pm2 list | grep -q "polymarket-dashboard"; then
-                echo "🧹 Cleaning up old process 'polymarket-dashboard'..."
-                pm2 delete polymarket-dashboard
+            # Start or Restart using PM2 with new name 'polygraalx'
+            pm2 describe polygraalx > /dev/null
+            if [ $? -eq 0 ]; then
+                pm2 restart polygraalx
+            else
+                pm2 start npm --name polygraalx -- start
             fi
-            
-            pm2 restart $APP_NAME || pm2 start npm --name $APP_NAME -- start
             
             echo "========================================"
             echo "✅ DEPLOYMENT SUCCESSFUL"

@@ -5,7 +5,7 @@
 
 set -e # Exit immediately if a command exits with a non-zero status.
 
-APP_NAME="PolygraalX"
+APP_NAME="polymarket-dashboard"
 
 echo "=========================================="
 echo "🚀 Starting Deployment: $APP_NAME"

@@ -58,4 +58,4 @@ git push
 4. ✅ Redémarrage PM2
 
 Tu verras les déploiements ici :
-https://github.com/ExiZfr/polymarkettradingbot/actions
+https://github.com/ExiZfr/PolygraalX/actions
