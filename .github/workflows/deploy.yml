@@ -34,11 +34,9 @@ jobs:
               git clone https://github.com/${{ github.repository }} .
             fi
             
-            # Installer Python et dépendances si nécessaire
-            if ! command -v python3 &> /dev/null; then
-              apt update
-              apt install -y python3 python3-pip python3-venv
-            fi
+            # Installer Python et dépendances système
+            apt update
+            apt install -y python3 python3-pip python3-venv git
             
             # Créer le venv si nécessaire
             if [ ! -d "venv" ]; then
@@ -48,8 +46,10 @@ jobs:
             # Installer/mettre à jour les dépendances
             ./venv/bin/pip install -r requirements.txt --upgrade
             
-            # Copier le service systemd
-            cp polygraalx.service /etc/systemd/system/
+            # Copier le service systemd et corriger les chemins
+            sed 's|/home/ubuntu/polygraalx|/root/polygraalx|g' polygraalx.service > /etc/systemd/system/polygraalx.service
+            sed -i 's|User=ubuntu|User=root|g' /etc/systemd/system/polygraalx.service
+            sed -i 's|Group=ubuntu|Group=root|g' /etc/systemd/system/polygraalx.service
             
             # Recharger systemd
             systemctl daemon-reload
@@ -57,6 +57,9 @@ jobs:
             # Activer et redémarrer le service
             systemctl enable polygraalx
             systemctl restart polygraalx
+            
+            # Attendre un peu que le service démarre
+            sleep 5
             
             # Afficher le status
             systemctl status polygraalx --no-pager
