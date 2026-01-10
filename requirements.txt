@@ -1,0 +1,20 @@
+# PolyGraalX - Autonomous VPS Sniper
+# Python 3.10+ required
+
+# Polymarket CLOB SDK
+py-clob-client>=0.18.0
+
+# Async crypto exchange data (Binance WebSocket)
+ccxt>=4.4.0
+
+# Environment variable management
+python-dotenv>=1.0.0
+
+# Numerical computation (Z-Score, statistics)
+numpy>=1.24.0
+
+# Async HTTP client (Gamma API)
+aiohttp>=3.9.0
+
+# HTTP client for sync operations
+httpx>=0.27.0

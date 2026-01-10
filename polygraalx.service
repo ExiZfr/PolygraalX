@@ -1,0 +1,44 @@
+[Unit]
+Description=PolyGraalX - Autonomous Polymarket Trading Bot
+Documentation=https://github.com/polygraalx
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+
+# Working directory (update to your installation path)
+WorkingDirectory=/home/ubuntu/polygraalx
+
+# Environment
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+
+# Use the virtual environment Python
+ExecStart=/home/ubuntu/polygraalx/venv/bin/python main.py
+
+# Restart policy - always restart on failure
+Restart=always
+RestartSec=10
+
+# Restart on these exit codes
+RestartForceExitStatus=1 2 3 4 5
+
+# Wait 60 seconds for graceful shutdown
+TimeoutStopSec=60
+
+# Logging (goes to journald)
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=polygraalx
+
+# Security hardening
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=/home/ubuntu/polygraalx
+
+[Install]
+WantedBy=multi-user.target

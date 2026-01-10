@@ -1,0 +1,65 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:  # Permet le déclenchement manuel
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          script: |
+            # Créer le répertoire si nécessaire
+            mkdir -p /root/polygraalx
+            
+            # Se déplacer dans le répertoire
+            cd /root/polygraalx
+            
+            # Cloner ou mettre à jour le repo
+            if [ -d ".git" ]; then
+              git pull
+            else
+              git clone https://github.com/${{ github.repository }} .
+            fi
+            
+            # Installer Python et dépendances si nécessaire
+            if ! command -v python3 &> /dev/null; then
+              apt update
+              apt install -y python3 python3-pip python3-venv
+            fi
+            
+            # Créer le venv si nécessaire
+            if [ ! -d "venv" ]; then
+              python3 -m venv venv
+            fi
+            
+            # Installer/mettre à jour les dépendances
+            ./venv/bin/pip install -r requirements.txt --upgrade
+            
+            # Copier le service systemd
+            cp polygraalx.service /etc/systemd/system/
+            
+            # Recharger systemd
+            systemctl daemon-reload
+            
+            # Activer et redémarrer le service
+            systemctl enable polygraalx
+            systemctl restart polygraalx
+            
+            # Afficher le status
+            systemctl status polygraalx --no-pager
+      
+      - name: Deployment Status
+        run: echo "✅ Deployment completed successfully!"
