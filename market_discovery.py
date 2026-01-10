@@ -81,10 +81,15 @@ class MarketDiscovery:
         self._session: Optional[aiohttp.ClientSession] = None
     
     async def _get_session(self) -> aiohttp.ClientSession:
-        """Get or create aiohttp session."""
+        """Get or create aiohttp session with SSL verification disabled for problematic networks."""
         if self._session is None or self._session.closed:
-            timeout = aiohttp.ClientTimeout(total=30)
-            self._session = aiohttp.ClientSession(timeout=timeout)
+            timeout = aiohttp.ClientTimeout(total=30, connect=10)
+            # Disable SSL verification to avoid certificate issues
+            connector = aiohttp.TCPConnector(ssl=False)
+            self._session = aiohttp.ClientSession(
+                timeout=timeout,
+                connector=connector
+            )
         return self._session
     
     async def close(self) -> None:
@@ -94,7 +99,7 @@ class MarketDiscovery:
     
     async def _fetch_crypto_markets(self) -> List[Dict[str, Any]]:
         """
-        Fetch all active crypto markets from Gamma API.
+        Fetch all active crypto markets from Gamma API with retry logic.
         
         Returns:
             List of market dictionaries
@@ -109,15 +114,48 @@ class MarketDiscovery:
             "limit": 100
         }
         
-        try:
-            async with session.get(url, params=params) as response:
-                response.raise_for_status()
-                data = await response.json()
-                logger.debug(f"Fetched {len(data)} crypto markets")
-                return data if isinstance(data, list) else []
-        except aiohttp.ClientError as e:
-            logger.error(f"Failed to fetch markets: {e}")
-            return []
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                async with session.get(url, params=params) as response:
+                    response.raise_for_status()
+                    data = await response.json()
+                    logger.debug(f"Fetched {len(data)} crypto markets")
+                    return data if isinstance(data, list) else []
+                    
+            except aiohttp.ClientConnectorError as e:
+                if attempt < max_retries - 1:
+                    wait_time = 2 ** attempt  # Exponential backoff: 1s, 2s, 4s
+                    logger.warning(
+                        f"Connection error to Gamma API (attempt {attempt + 1}/{max_retries}): {e}. "
+                        f"Retrying in {wait_time}s..."
+                    )
+                    await asyncio.sleep(wait_time)
+                else:
+                    logger.error(
+                        f"Failed to connect to Gamma API after {max_retries} attempts. "
+                        f"Network may be unreachable or SSL certificate issue. "
+                        f"Bot will continue with cached markets."
+                    )
+                    return []
+                    
+            except asyncio.TimeoutError:
+                if attempt < max_retries - 1:
+                    logger.warning(f"Timeout fetching markets (attempt {attempt + 1}/{max_retries}), retrying...")
+                    await asyncio.sleep(2 ** attempt)
+                else:
+                    logger.error(f"Timeout after {max_retries} attempts. Will retry on next scan.")
+                    return []
+                    
+            except aiohttp.ClientError as e:
+                logger.error(f"HTTP error fetching markets: {e}")
+                return []
+                
+            except Exception as e:
+                logger.error(f"Unexpected error fetching markets: {e}", exc_info=True)
+                return []
+        
+        return []
     
     def _parse_asset(self, question: str) -> Optional[str]:
         """
