@@ -57,14 +57,25 @@ class Config:
         """
         load_dotenv(env_file)
         
-        # Required fields
+        # Check if paper trading mode
+        paper_mode = os.getenv("PAPER_TRADING", "false").lower() in ("true", "1", "yes")
+        
+        # Required fields (only in real trading mode)
         private_key = os.getenv("POLYGON_PRIVATE_KEY", "").strip()
         funder_address = os.getenv("FUNDER_ADDRESS", "").strip()
         
-        if not private_key:
-            raise ValueError("POLYGON_PRIVATE_KEY is required in .env")
-        if not funder_address:
-            raise ValueError("FUNDER_ADDRESS is required in .env")
+        # In paper mode, use dummy values if not provided
+        if paper_mode:
+            if not private_key:
+                private_key = "0x" + "0" * 64  # Dummy key for paper trading
+            if not funder_address:
+                funder_address = "0x" + "0" * 40  # Dummy address for paper trading
+        else:
+            # Real trading mode - keys are required
+            if not private_key:
+                raise ValueError("POLYGON_PRIVATE_KEY is required in .env")
+            if not funder_address:
+                raise ValueError("FUNDER_ADDRESS is required in .env")
         
         # Validate private key format
         if not private_key.startswith("0x"):
