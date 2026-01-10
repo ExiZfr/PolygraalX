@@ -442,10 +442,32 @@ class PaperPolyGraalX(PolyGraalX):
     
     async def _log_status(self) -> None:
         """Log current paper trading status."""
-        status_lines = ["📝 PAPER"]
+        # Get trading statistics
+        stats = self.trading.get_statistics()
+        pos_status = self.positions.get_status()
         
-        # Balance
-        status_lines.append(f"💰 ${self.trading.balance:.2f}")
+        # Calculate balance change
+        balance_change = self.trading.balance - self.initial_balance
+        balance_change_pct = (balance_change / self.initial_balance * 100) if self.initial_balance > 0 else 0
+        
+        status_lines = ["📝 PAPER TRADING"]
+        
+        # Balance with change
+        balance_emoji = "📈" if balance_change >= 0 else "📉"
+        status_lines.append(
+            f"{balance_emoji} ${self.trading.balance:.2f} ({balance_change:+.2f} / {balance_change_pct:+.1f}%)"
+        )
+        
+        # P&L
+        pnl_emoji = "💰" if stats['total_pnl'] >= 0 else "💸"
+        status_lines.append(f"{pnl_emoji} P&L: ${stats['total_pnl']:+.2f}")
+        
+        # Trades & Win Rate
+        if stats['total_trades'] > 0:
+            status_lines.append(
+                f"🎯 Trades: {stats['total_trades']} (W:{stats['winning_trades']} L:{stats['losing_trades']}) "
+                f"WR:{stats['win_rate']:.0f}%"
+            )
         
         # Price feed status
         for asset in self.config.trade_assets:
@@ -456,15 +478,12 @@ class PaperPolyGraalX(PolyGraalX):
                     f"{asset}: ${window.current_price:,.2f} (Z={zscore:+.2f})"
                 )
         
-        # Position status
-        pos_status = self.positions.get_status()
-        status_lines.append(
-            f"Pos: {pos_status['open_positions']}/{pos_status['max_positions']}"
-        )
-        status_lines.append(f"Trades: {pos_status['total_trades']}")
-        status_lines.append(f"P&L: ${pos_status['total_pnl']:+.2f}")
+        # Open positions
+        if pos_status['open_positions'] > 0:
+            status_lines.append(f"📊 Pos: {pos_status['open_positions']}/{pos_status['max_positions']}")
         
         self.logger.info(" | ".join(status_lines))
+
     
     async def _cleanup(self) -> None:
         """Clean up and print session summary."""
