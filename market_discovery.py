@@ -86,9 +86,16 @@ class MarketDiscovery:
     async def _get_session(self) -> aiohttp.ClientSession:
         """Get or create aiohttp session with SSL verification disabled for problematic networks."""
         if self._session is None or self._session.closed:
+            import ssl
+            
             timeout = aiohttp.ClientTimeout(total=30, connect=10)
-            # Disable SSL verification to avoid certificate issues
-            connector = aiohttp.TCPConnector(ssl=False)
+            
+            # Create SSL context without certificate verification
+            ssl_context = ssl.create_default_context()
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+            
+            connector = aiohttp.TCPConnector(ssl=ssl_context)
             self._session = aiohttp.ClientSession(
                 timeout=timeout,
                 connector=connector
@@ -111,13 +118,13 @@ class MarketDiscovery:
         
         url = f"{GAMMA_API_BASE}/markets"
         params = {
-            "tag_id": CRYPTO_TAG_ID,
+            # Remove tag_id filter - search all markets
             "active": "true",
             "closed": "false",
             "limit": 100
         }
         
-        # If API was previously unreachable, only retry every 5 minutes
+        #  If API was previously unreachable, only retry every 5 minutes
         import time
         if self._api_unreachable:
             if time.time() - self._last_error_logged < 300:  # 5 minutes
@@ -130,10 +137,19 @@ class MarketDiscovery:
                 async with session.get(url, params=params) as response:
                     response.raise_for_status()
                     data = await response.json()
-                    logger.debug(f"Fetched {len(data)} crypto markets")
+                    
+                    # Filter for crypto markets by keywords
+                    crypto_markets = []
+                    if isinstance(data, list):
+                        for market in data:
+                            question = market.get("question", "").lower()
+                            if any(keyword in question for keyword in ["btc", "bitcoin", "eth", "ethereum"]):
+                                crypto_markets.append(market)
+                    
+                    logger.debug(f"Fetched {len(crypto_markets)} crypto markets from {len(data) if isinstance(data, list) else 0} total")
                     # Reset unreachable flag on success
                     self._api_unreachable = False
-                    return data if isinstance(data, list) else []
+                    return crypto_markets
                     
             except aiohttp.ClientConnectorError as e:
                 if attempt < max_retries - 1:
