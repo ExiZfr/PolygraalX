@@ -417,6 +417,19 @@ class PaperPolyGraalX(PolyGraalX):
         # Paper trading always passes connection test
         self.trading.test_connection()
         
+        async def _status_loop() -> None:
+            """Periodically call _log_status while the bot is running."""
+            while not self._stop_event.is_set():
+                try:
+                    await self._log_status()
+                except Exception as e:
+                    self.logger.error(f"Error in status loop: {e}")
+                # Wait 30 seconds or until stop event
+                try:
+                    await asyncio.wait_for(self._stop_event.wait(), timeout=30)
+                except asyncio.TimeoutError:
+                    pass
+
         try:
             await asyncio.gather(
                 self.price_feed.stream(self._stop_event),
@@ -424,7 +437,8 @@ class PaperPolyGraalX(PolyGraalX):
                     self.config.trade_assets,
                     self._stop_event
                 ),
-                self._signal_loop()
+                self._signal_loop(),
+                _status_loop()
             )
         finally:
             self._running = False
