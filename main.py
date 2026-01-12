@@ -360,7 +360,10 @@ class PolyGraalX:
         self.logger.info("=" * 60)
         self.logger.info("PolyGraalX - Autonomous VPS Sniper")
         self.logger.info(f"Assets: {', '.join(self.config.trade_assets)}")
-        self.logger.info(f"Bet Amount: ${self.config.bet_amount_usdc}")
+        if self.bet_mode == "fixed":
+            self.logger.info(f"Bet Mode: Fixed ${self.bet_value:.2f} per trade")
+        else:
+            self.logger.info(f"Bet Mode: {self.bet_value:.1f}% of balance per trade")
         self.logger.info(f"Z-Score Threshold: ±{self.config.zscore_threshold}")
         self.logger.info("=" * 60)
         
