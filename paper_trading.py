@@ -87,10 +87,10 @@ class PaperTradingEngine:
     without making real API calls to Polymarket.
     """
     
-    def __init__(self, initial_balance: float = 10.0):
+    def __init__(self, initial_balance: float = 50.0):
         """
         Args:
-            initial_balance: Starting balance in USDC (default $10)
+            initial_balance: Starting balance in USDC (default $50)
         """
         self.initial_balance = initial_balance
         self.balance = initial_balance
