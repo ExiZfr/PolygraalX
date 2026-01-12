@@ -71,23 +71,22 @@ class TradingEngine:
             raise
 
     def test_connection(self) -> bool:
-        """Test the CLOB connection and check USDC balance.
+        """Test the CLOB connection.
 
         Returns:
-            True if connection is successful and balance > 0
+            True if connection is successful
         """
         try:
-            # Get balances
-            balances = self.client.get_balances()
-            usdc_balance = float(balances.get("USDC", 0))
+            # Simple connectivity test
+            server_time = self.client.get_server_time()
             
-            self.logger.info(f"💰 USDC Balance: ${usdc_balance:.2f}")
-            
-            if usdc_balance <= 0:
-                self.logger.warning("⚠️ USDC balance is 0. Please deposit funds to trade.")
+            if server_time:
+                self.logger.info(f"✅ Connected to Polymarket CLOB (server time: {server_time})")
+                self.logger.info("💡 Note: Balance check will happen before each trade")
+                return True
+            else:
+                self.logger.error("❌ Failed to get server time")
                 return False
-            
-            return True
             
         except Exception as e:
             self.logger.error(f"❌ Connection test failed: {e}")
