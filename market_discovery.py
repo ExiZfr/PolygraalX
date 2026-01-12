@@ -401,30 +401,39 @@ class MarketDiscovery:
         question = market_data.get("question", "")
         slug = market_data.get("slug", "")
         
-        # Check if this is a 15-min BTC/ETH market
+        # Check if this is a BTC/ETH market
         asset = self._parse_asset(question)
         if not asset:
-            return None
+            return None  # Not BTC or ETH, skip silently
         
+        # Check if 15-min market
         if not self._is_15min_market(question, slug):
+            logger.debug(f"Not a 15-min market: {question[:50]}")
             return None
         
         # Parse end time
         end_time = self._parse_end_time(market_data)
         if not end_time:
-            logger.debug(f"Could not parse end time for: {question}")
+            logger.warning(f"Could not parse end time for: {question[:50]}")
             return None
         
         # Check time window
         now = datetime.now(timezone.utc)
         seconds_to_expiry = (end_time - now).total_seconds()
         
+        # Log time info for debugging
+        logger.debug(f"Market {asset}: expires in {seconds_to_expiry:.0f}s (window: {self.min_time_to_expiry}-{self.max_time_to_expiry}s)")
+        
+        if seconds_to_expiry < 0:
+            logger.debug(f"Market EXPIRED: {question[:50]}")
+            return None
+            
         if seconds_to_expiry < self.min_time_to_expiry:
-            logger.debug(f"Market too close to expiry ({seconds_to_expiry}s): {question}")
+            logger.debug(f"Too close to expiry ({seconds_to_expiry:.0f}s < {self.min_time_to_expiry}s): {question[:50]}")
             return None
         
         if seconds_to_expiry > self.max_time_to_expiry:
-            logger.debug(f"Market too far from expiry ({seconds_to_expiry}s): {question}")
+            logger.debug(f"Too far from expiry ({seconds_to_expiry:.0f}s > {self.max_time_to_expiry}s): {question[:50]}")
             return None
         
         # Parse strike price
