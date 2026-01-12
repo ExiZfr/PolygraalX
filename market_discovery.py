@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 # Gamma API Configuration
 GAMMA_API_BASE = "https://gamma-api.polymarket.com"
-CRYPTO_TAG_ID = 21  # Polymarket's crypto tag
+CRYPTO_TAG_ID = 102467  # Polymarket's 15-minute crypto markets tag
 
 
 @dataclass
@@ -118,13 +118,13 @@ class MarketDiscovery:
         
         url = f"{GAMMA_API_BASE}/markets"
         params = {
-            # Remove tag_id filter - search all markets
+            "tag_id": CRYPTO_TAG_ID,  # Use 15-minute crypto markets tag
             "active": "true",
             "closed": "false",
             "limit": 100
         }
         
-        #  If API was previously unreachable, only retry every 5 minutes
+        # If API was previously unreachable, only retry every 5 minutes
         import time
         if self._api_unreachable:
             if time.time() - self._last_error_logged < 300:  # 5 minutes
@@ -137,19 +137,10 @@ class MarketDiscovery:
                 async with session.get(url, params=params) as response:
                     response.raise_for_status()
                     data = await response.json()
-                    
-                    # Filter for crypto markets by keywords
-                    crypto_markets = []
-                    if isinstance(data, list):
-                        for market in data:
-                            question = market.get("question", "").lower()
-                            if any(keyword in question for keyword in ["btc", "bitcoin", "eth", "ethereum"]):
-                                crypto_markets.append(market)
-                    
-                    logger.debug(f"Fetched {len(crypto_markets)} crypto markets from {len(data) if isinstance(data, list) else 0} total")
+                    logger.debug(f"Fetched {len(data) if isinstance(data, list) else 0} 15-min crypto markets")
                     # Reset unreachable flag on success
                     self._api_unreachable = False
-                    return crypto_markets
+                    return data if isinstance(data, list) else []
                     
             except aiohttp.ClientConnectorError as e:
                 if attempt < max_retries - 1:
