@@ -121,7 +121,9 @@ class MarketDiscovery:
             "tag_id": CRYPTO_TAG_ID,  # Use 15-minute crypto markets tag
             "active": "true",
             "closed": "false",
-            "limit": 100
+            "order": "end_date",  # Sort by end date
+            "ascending": "false",  # Most recent first
+            "limit": 200  # Increase limit to find current markets
         }
         
         # If API was previously unreachable, only retry every 5 minutes
@@ -456,11 +458,23 @@ class MarketDiscovery:
         markets = await self._fetch_crypto_markets()
         result: Dict[str, Market] = {}
         
-        for market_data in markets:
+        logger.info(f"🔍 Scanning {len(markets)} markets from API for assets: {assets}")
+        
+        for i, market_data in enumerate(markets):
+            question = market_data.get("question", "N/A")
+            logger.debug(f"  [{i+1}] Checking: {question[:80]}")
+            
             market = self._parse_market(market_data)
-            if market and market.asset in assets and market.asset not in result:
-                logger.info(f"Found market: {market}")
-                result[market.asset] = market
+            if market:
+                logger.debug(f"      ✓ Parsed: {market.asset} @ ${market.strike_price}, expires in {market.seconds_to_expiry}s")
+                if market.asset in assets and market.asset not in result:
+                    logger.info(f"✅ Found market: {market}")
+                    result[market.asset] = market
+            else:
+                logger.debug(f"      ✗ Failed to parse (not 15-min or wrong format)")
+        
+        if not result:
+            logger.warning(f"❌ No markets found for {assets}. API returned {len(markets)} total markets.")
         
         self._markets.update(result)
         return result
