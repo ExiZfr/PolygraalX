@@ -108,6 +108,11 @@ class PaperTradingEngine:
         self._losing_trades = 0
         self._total_pnl = 0.0
         
+        # Losing streak protection
+        self._consecutive_losses = 0
+        self._max_consecutive_losses = 5  # Stop after 5 losses in a row
+        self._should_stop = False
+        
         logger.info(f"📝 Paper Trading initialized with ${initial_balance:.2f}")
     
     def _generate_order_id(self) -> str:
@@ -308,10 +313,21 @@ class PaperTradingEngine:
         self._total_trades += 1
         self._total_pnl += pnl
         
+        # Track winning/losing streak
         if pnl >= 0:
             self._winning_trades += 1
+            self._consecutive_losses = 0  # Reset losing streak
         else:
             self._losing_trades += 1
+            self._consecutive_losses += 1
+            
+            # Check if we hit max consecutive losses
+            if self._consecutive_losses >= self._max_consecutive_losses:
+                self._should_stop = True
+                logger.critical(
+                    f"🛑 STOP FORCÉ: {self._consecutive_losses} trades perdants consécutifs! "
+                    f"Le bot va s'arrêter par sécurité."
+                )
         
         emoji = "✅" if pnl >= 0 else "❌"
         logger.info(
@@ -321,6 +337,13 @@ class PaperTradingEngine:
             f"PnL: ${pnl:+.2f} ({pnl_pct:+.1f}%) | "
             f"Reason: {exit_reason}"
         )
+        
+        # Warn about losing streak
+        if self._consecutive_losses >= 3 and not self._should_stop:
+            logger.warning(
+                f"⚠️ Attention: {self._consecutive_losses} pertes consécutives "
+                f"({self._max_consecutive_losses - self._consecutive_losses} avant arrêt forcé)"
+            )
         
         return record
     

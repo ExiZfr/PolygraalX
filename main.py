@@ -324,11 +324,17 @@ class PolyGraalX:
         
         while not self._stop_event.is_set():
             try:
-                # Check entry signals
+                # Check for entry signals
                 await self._check_entry_signals()
                 
-                # Check exit conditions
+                # Check exit conditions for open positions
                 await self._check_exit_conditions()
+                
+                # Check if paper trading engine hit max consecutive losses
+                if hasattr(self.trading, '_should_stop') and self.trading._should_stop:
+                    self.logger.critical("🛑 ARRÊT AUTOMATIQUE: Trop de pertes consécutives détectées!")
+                    self.stop()
+                    break
                 
                 # Periodic status log
                 now = datetime.now(timezone.utc)
@@ -336,7 +342,6 @@ class PolyGraalX:
                     await self._log_status()
                     last_status_log = now
                 
-                # Small delay between checks
                 await asyncio.sleep(1)
                 
             except asyncio.CancelledError:
