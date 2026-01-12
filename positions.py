@@ -98,6 +98,11 @@ class PositionManager:
         # Open positions: position_id -> Position
         self._positions: Dict[str, Position] = {}
         
+        # Losing streak protection (same as paper trading)
+        self._consecutive_losses = 0
+        self._max_consecutive_losses = 5  # Stop after 5 losses in a row
+        self._should_stop = False
+        
         # Position counter for ID generation
         self._counter = 0
     
@@ -223,6 +228,33 @@ class PositionManager:
         )
         
         if result.success:
+            # Calculate PnL
+            proceeds = result.shares * result.avg_price
+            cost = position.amount_usdc
+            pnl = proceeds - cost
+            
+            # Track winning/losing streak
+            if pnl >= 0:
+                self._consecutive_losses = 0  # Reset losing streak
+                logger.info(f"✅ Position profitable: ${pnl:+.2f}")
+            else:
+                self._consecutive_losses += 1
+                logger.warning(f"❌ Position loss: ${pnl:+.2f}")
+                
+                # Check if we hit max consecutive losses
+                if self._consecutive_losses >= self._max_consecutive_losses:
+                    self._should_stop = True
+                    logger.critical(
+                        f"🛑 STOP FORCÉ: {self._consecutive_losses} trades perdants consécutifs! "
+                        f"Le bot va s'arrêter par sécurité."
+                    )
+                # Warn about losing streak
+                elif self._consecutive_losses >= 3:
+                    logger.warning(
+                        f"⚠️ Attention: {self._consecutive_losses} pertes consécutives "
+                        f"({self._max_consecutive_losses - self._consecutive_losses} avant arrêt forcé)"
+                    )
+            
             # Remove from open positions
             del self._positions[position.position_id]
             logger.info(f"Position closed successfully: {position.position_id}")
