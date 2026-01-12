@@ -285,32 +285,54 @@ class MarketDiscovery:
         """
         Parse market end time from API response.
         
+        Priority:
+        1. Unix timestamp from slug (most accurate, e.g. btc-updown-15m-1768220100)
+        2. Full ISO datetime with time
+        3. Unix timestamp fields
+        
         Args:
             market_data: Raw market data from API
             
         Returns:
             End time as datetime, or None if parsing fails
         """
-        # Try different field names
+        # FIRST: Try to extract Unix timestamp from slug (most reliable)
+        # Slug format: btc-updown-15m-1768220100 (last number is unix timestamp)
+        slug = market_data.get("slug", "")
+        if slug:
+            # Extract last numeric segment from slug
+            parts = slug.split("-")
+            for part in reversed(parts):
+                if part.isdigit() and len(part) >= 10:
+                    try:
+                        ts = int(part)
+                        dt = datetime.fromtimestamp(ts, tz=timezone.utc)
+                        return dt
+                    except (ValueError, OSError):
+                        continue
+        
+        # SECOND: Try ISO format date fields (only if they have time component)
         end_time_fields = ["end_date_iso", "endDateIso", "end_date", "endDate", "resolution_date"]
         
         for field in end_time_fields:
             if field in market_data and market_data[field]:
                 try:
-                    # Handle ISO format
                     dt_str = market_data[field]
+                    # Skip if it's just a date without time (e.g. "2026-01-12")
+                    if len(dt_str) <= 10:
+                        continue
+                        
                     if dt_str.endswith("Z"):
                         dt_str = dt_str[:-1] + "+00:00"
                     
                     dt = datetime.fromisoformat(dt_str)
-                    # Ensure timezone-aware (convert naive to UTC)
                     if dt.tzinfo is None:
                         dt = dt.replace(tzinfo=timezone.utc)
                     return dt
                 except (ValueError, TypeError):
                     continue
         
-        # Try Unix timestamp
+        # THIRD: Try Unix timestamp fields
         timestamp_fields = ["end_timestamp", "endTimestamp"]
         for field in timestamp_fields:
             if field in market_data:
