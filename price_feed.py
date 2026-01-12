@@ -168,9 +168,72 @@ class PriceFeed:
             return window.current_price
         return None
     
+    async def _fetch_price_rest(self, symbol: str) -> Optional[float]:
+        """
+        Fallback: Fetch price via REST API when WebSocket fails.
+        
+        Args:
+            symbol: Trading pair like "BTC/USDT"
+            
+        Returns:
+            Current price or None
+        """
+        import aiohttp
+        import ssl
+        
+        # Convert symbol format: BTC/USDT -> BTCUSDT
+        binance_symbol = symbol.replace("/", "")
+        url = f"https://api.binance.com/api/v3/ticker/price?symbol={binance_symbol}"
+        
+        try:
+            # Create SSL context that doesn't verify certificates
+            ssl_context = ssl.create_default_context()
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+            
+            connector = aiohttp.TCPConnector(ssl=ssl_context)
+            async with aiohttp.ClientSession(connector=connector) as session:
+                async with session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        return float(data.get("price", 0))
+        except Exception as e:
+            logger.debug(f"REST fallback failed for {symbol}: {e}")
+        
+        return None
+    
+    async def _poll_prices_rest(self, stop_event: asyncio.Event) -> None:
+        """
+        Fallback polling loop using REST API when WebSocket is unavailable.
+        Polls every 2 seconds.
+        """
+        logger.info("📡 Using REST API fallback for price data (polling every 2s)")
+        
+        while not stop_event.is_set():
+            success = False
+            for symbol in self.symbols:
+                price = await self._fetch_price_rest(symbol)
+                if price and price > 0:
+                    timestamp = datetime.now(timezone.utc)
+                    if symbol in self.windows:
+                        self.windows[symbol].add(price, timestamp)
+                        await self._notify_callbacks(symbol, price)
+                    success = True
+            
+            if success:
+                self._connected = True
+                self._api_unreachable = False
+            
+            # Poll every 2 seconds
+            try:
+                await asyncio.wait_for(stop_event.wait(), timeout=2)
+            except asyncio.TimeoutError:
+                pass
+    
     async def stream(self, stop_event: asyncio.Event) -> None:
         """
         Stream price updates from Binance.
+        Automatically switches to REST API fallback after WebSocket failures.
         
         Args:
             stop_event: Event to signal stream termination
@@ -179,9 +242,17 @@ class PriceFeed:
         logger.info(f"Starting price feed for: {self.symbols}")
         
         reconnect_delay = 1
-        max_reconnect_delay = 60
+        max_reconnect_delay = 30
+        ws_failure_count = 0
+        max_ws_failures = 3  # Switch to REST after 3 failures
         
         while not stop_event.is_set():
+            # If too many WebSocket failures, switch to REST API
+            if ws_failure_count >= max_ws_failures:
+                logger.warning(f"⚠️ WebSocket failed {ws_failure_count} times, switching to REST API")
+                await self._poll_prices_rest(stop_event)
+                return  # REST loop runs until stop_event
+            
             try:
                 self._connected = True
                 
@@ -206,12 +277,12 @@ class PriceFeed:
                                 self.windows[symbol].add(price, timestamp)
                                 await self._notify_callbacks(symbol, price)
                         
-                        # Reset reconnect delay and unreachable flag on success
+                        # Reset on success
                         reconnect_delay = 1
+                        ws_failure_count = 0
                         self._api_unreachable = False
                         
                     except asyncio.TimeoutError:
-                        # No trades in 30s, check if still connected
                         logger.debug("Price feed timeout, checking connection...")
                         continue
                         
@@ -221,23 +292,15 @@ class PriceFeed:
                 
             except Exception as e:
                 self._connected = False
-                import time
+                ws_failure_count += 1
                 
-                # Only log error once every 5 minutes when unreachable
-                if not self._api_unreachable:
-                    logger.error(f"Price feed error: {e}")
-                    logger.warning(f"Reconnecting in {reconnect_delay}s... (This message will not repeat for 5 minutes)")
-                    self._api_unreachable = True
-                    self._last_error_time = time.time()
-                elif time.time() - self._last_error_time > 300:  # 5 minutes
-                    logger.warning(f"Still unable to connect to Binance API, retrying...")
-                    self._last_error_time = time.time()
-                
-                await asyncio.sleep(reconnect_delay)
-                reconnect_delay = min(reconnect_delay * 2, max_reconnect_delay)
-                
-                # Recreate exchange connection
-                await self.close()
+                if ws_failure_count < max_ws_failures:
+                    logger.warning(f"WebSocket error ({ws_failure_count}/{max_ws_failures}): {e}")
+                    logger.info(f"Retrying in {reconnect_delay}s...")
+                    await asyncio.sleep(reconnect_delay)
+                    reconnect_delay = min(reconnect_delay * 2, max_reconnect_delay)
+                    await self.close()
+                # If max failures reached, loop will switch to REST on next iteration
     
     async def test_connection(self, timeout: int = 10) -> bool:
         """
