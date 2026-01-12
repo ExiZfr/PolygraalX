@@ -146,6 +146,47 @@ class VolatilityDetector:
         
         return zscore, pct_move, mean, std
     
+    def calculate_rsi(
+        self,
+        prices: List[float],
+        period: int = 14
+    ) -> float:
+        """
+        Calculate RSI (Relative Strength Index) indicator.
+        
+        RSI > 70 = Overbought (confirms SHORT signal)
+        RSI < 30 = Oversold (confirms LONG signal)
+        
+        Args:
+            prices: Historical price observations
+            period: RSI period (default 14)
+            
+        Returns:
+            RSI value (0-100), or 50.0 if insufficient data
+        """
+        if len(prices) < period + 1:
+            return 50.0  # Neutral default
+        
+        # Calculate price deltas
+        deltas = np.diff(prices[-(period + 1):])
+        
+        # Separate gains and losses
+        gains = np.where(deltas > 0, deltas, 0)
+        losses = np.where(deltas < 0, -deltas, 0)
+        
+        # Calculate average gain and loss
+        avg_gain = gains.mean()
+        avg_loss = losses.mean()
+        
+        if avg_loss == 0:
+            return 100.0  # All gains
+        
+        # Calculate RS and RSI
+        rs = avg_gain / avg_loss
+        rsi = 100 - (100 / (1 + rs))
+        
+        return float(rsi)
+    
     def check_entry_signal(
         self,
         asset: str,
@@ -171,37 +212,53 @@ class VolatilityDetector:
             prices, current_price
         )
         
-        # Determine if we have a signal
+        # Calculate RSI for confirmation
+        rsi = self.calculate_rsi(prices)
+        
+        # Determine if we have a signal (with RSI confirmation)
         signal_triggered = False
         price_direction = ""
         bet_direction = ""
         confidence = 0.0
         
-        # Strong upward spike -> bet NO (mean reversion down)
-        if zscore >= self.zscore_threshold:
-            signal_triggered = True
-            price_direction = "UP"
-            bet_direction = "NO"
-            # Higher Z-Score = higher confidence
-            confidence = min(1.0, abs(zscore) / (self.zscore_threshold * 2))
-            
-        # Strong downward spike -> bet YES (mean reversion up)
-        elif zscore <= -self.zscore_threshold:
-            signal_triggered = True
-            price_direction = "DOWN"
-            bet_direction = "YES"
-            confidence = min(1.0, abs(zscore) / (self.zscore_threshold * 2))
+        # ADJUSTED THRESHOLD: 2.5 -> 2.2 for more sensitivity
+        zscore_entry_threshold = 2.2
         
-        # Fallback: percentage move trigger
-        elif abs(pct_move) >= self.pct_threshold:
-            signal_triggered = True
-            if pct_move > 0:
+        # Strong upward spike -> bet NO (mean reversion down)
+        # REQUIRES: Z-Score >= 2.2 AND RSI > 70 (overbought confirmation)
+        if zscore >= zscore_entry_threshold:
+            if rsi > 70:
+                signal_triggered = True
                 price_direction = "UP"
                 bet_direction = "NO"
+                # Confidence: combination of Z-Score + RSI overbought strength
+                zscore_conf = abs(zscore) / (zscore_entry_threshold * 2)
+                rsi_conf = (rsi - 70) / 30  # 0-1 range for RSI above 70
+                confidence = min(1.0, (zscore_conf + rsi_conf) / 2)
             else:
+                logger.debug(
+                    f"{asset}: Z-Score {zscore:.2f} triggers but RSI {rsi:.1f} < 70 "
+                    f"(not overbought - possible breakout, skipping)"
+                )
+                return None
+            
+        # Strong downward spike -> bet YES (mean reversion up)
+        # REQUIRES: Z-Score <= -2.2 AND RSI < 30 (oversold confirmation)
+        elif zscore <= -zscore_entry_threshold:
+            if rsi < 30:
+                signal_triggered = True
                 price_direction = "DOWN"
                 bet_direction = "YES"
-            confidence = min(1.0, abs(pct_move) / (self.pct_threshold * 2))
+                # Confidence: combination of Z-Score + RSI oversold strength
+                zscore_conf = abs(zscore) / (zscore_entry_threshold * 2)
+                rsi_conf = (30 - rsi) / 30  # 0-1 range for RSI below 30
+                confidence = min(1.0, (zscore_conf + rsi_conf) / 2)
+            else:
+                logger.debug(
+                    f"{asset}: Z-Score {zscore:.2f} triggers but RSI {rsi:.1f} > 30 "
+                    f"(not oversold - possible breakout, skipping)"
+                )
+                return None
         
         if not signal_triggered:
             return None
@@ -218,7 +275,10 @@ class VolatilityDetector:
             timestamp=datetime.now(timezone.utc)
         )
         
-        logger.info(f"Entry signal generated: {signal}")
+        logger.info(
+            f"✅ Entry signal: {signal} | RSI: {rsi:.1f} | "
+            f"Confidence: {confidence:.2%}"
+        )
         return signal
     
     def check_exit_signal(

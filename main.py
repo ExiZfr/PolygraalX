@@ -203,6 +203,15 @@ class PolyGraalX:
                         self._last_no_market_log[asset] = now
                     continue
                 
+                # 🔴 KILL ZONE CHECK: Do NOT trade if too close to expiry
+                seconds_to_expiry = market.seconds_to_expiry
+                if seconds_to_expiry < self.config.min_seconds_to_expiry_kill_zone:
+                    self.logger.info(
+                        f"⏱️ KILL ZONE: Skipping {asset} - Too close to expiry "
+                        f"({seconds_to_expiry}s < {self.config.min_seconds_to_expiry_kill_zone}s minimum)"
+                    )
+                    continue
+                
                 # Get price data
                 window = self.price_feed.get_window(asset)
                 if not window or not window.is_ready():

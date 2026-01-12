@@ -35,6 +35,9 @@ class Config:
     exit_zscore_threshold: float = 0.5
     force_exit_before_expiry: int = 120
     
+    # Trading Kill Zone (Minimum time before expiry to enter trade)
+    min_seconds_to_expiry_kill_zone: int = 300  # 5 minutes - DO NOT trade closer to expiry
+    
     # Logging
     log_level: str = "INFO"
     log_file: str = "bot.log"
@@ -103,6 +106,7 @@ class Config:
             max_positions=int(os.getenv("MAX_POSITIONS", "2")),
             exit_zscore_threshold=float(os.getenv("EXIT_ZSCORE_THRESHOLD", "0.5")),
             force_exit_before_expiry=int(os.getenv("FORCE_EXIT_BEFORE_EXPIRY", "120")),
+            min_seconds_to_expiry_kill_zone=int(os.getenv("MIN_SECONDS_TO_EXPIRY_KILL_ZONE", "300")),
             log_level=os.getenv("LOG_LEVEL", "INFO").upper(),
             log_file=os.getenv("LOG_FILE", "bot.log"),
             log_max_bytes=int(os.getenv("LOG_MAX_BYTES", "10000000")),
