@@ -99,6 +99,10 @@ class PriceFeed:
         self._exchange: Optional[ccxtpro.binance] = None
         self._connected = False
         
+        # Flag to suppress repeated connection errors
+        self._api_unreachable: bool = False
+        self._last_error_time: float = 0
+        
         # Callbacks for price updates
         self._callbacks: List[Callable[[str, float], Any]] = []
     
@@ -202,8 +206,9 @@ class PriceFeed:
                                 self.windows[symbol].add(price, timestamp)
                                 await self._notify_callbacks(symbol, price)
                         
-                        # Reset reconnect delay on success
+                        # Reset reconnect delay and unreachable flag on success
                         reconnect_delay = 1
+                        self._api_unreachable = False
                         
                     except asyncio.TimeoutError:
                         # No trades in 30s, check if still connected
@@ -216,10 +221,18 @@ class PriceFeed:
                 
             except Exception as e:
                 self._connected = False
-                logger.error(f"Price feed error: {e}")
+                import time
                 
-                # Exponential backoff
-                logger.warning(f"Reconnecting in {reconnect_delay}s...")
+                # Only log error once every 5 minutes when unreachable
+                if not self._api_unreachable:
+                    logger.error(f"Price feed error: {e}")
+                    logger.warning(f"Reconnecting in {reconnect_delay}s... (This message will not repeat for 5 minutes)")
+                    self._api_unreachable = True
+                    self._last_error_time = time.time()
+                elif time.time() - self._last_error_time > 300:  # 5 minutes
+                    logger.warning(f"Still unable to connect to Binance API, retrying...")
+                    self._last_error_time = time.time()
+                
                 await asyncio.sleep(reconnect_delay)
                 reconnect_delay = min(reconnect_delay * 2, max_reconnect_delay)
                 
