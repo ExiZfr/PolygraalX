@@ -281,15 +281,14 @@ class PaperTradingEngine:
         Returns:
             TradeRecord for the closed trade
         """
-        pnl = (exit_price - position.entry_price) * position.shares
+        # Calculate proceeds and PnL
+        # FIXED: Always use proceeds - cost formula
+        # For both YES and NO positions, if we sell higher than we bought, we profit
+        proceeds = position.shares * exit_price
+        cost = position.amount_usdc
+        pnl = proceeds - cost
         
-        # Adjust PnL for direction
-        # If we bet NO and price went down, we win
-        # If we bet YES and price went up, we win
-        if position.direction == "NO":
-            pnl = -pnl  # Reverse for NO bets
-        
-        pnl_pct = (pnl / position.amount_usdc) * 100 if position.amount_usdc > 0 else 0
+        pnl_pct = (pnl / cost) * 100 if cost > 0 else 0
         
         record = TradeRecord(
             asset=position.asset,
@@ -317,6 +316,8 @@ class PaperTradingEngine:
         emoji = "✅" if pnl >= 0 else "❌"
         logger.info(
             f"{emoji} Paper Trade Closed: {position.asset} {position.direction} | "
+            f"Entry: {position.entry_price:.3f} | Exit: {exit_price:.3f} | "
+            f"Spent: ${cost:.2f} | Proceeds: ${proceeds:.2f} | "
             f"PnL: ${pnl:+.2f} ({pnl_pct:+.1f}%) | "
             f"Reason: {exit_reason}"
         )
