@@ -62,8 +62,8 @@ class MarketDiscovery:
     
     def __init__(
         self,
-        min_time_to_expiry: int = 60,   # Accept markets 1 min before expiry
-        max_time_to_expiry: int = 900,  # Accept markets up to 15 min before expiry
+        min_time_to_expiry: int = 30,    # Accept markets 30s before expiry
+        max_time_to_expiry: int = 1800,  # Accept markets up to 30 min before expiry
         scan_interval: int = 30
     ):
         """
