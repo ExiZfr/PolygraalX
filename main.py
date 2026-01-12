@@ -424,9 +424,9 @@ class PaperPolyGraalX(PolyGraalX):
                     await self._log_status()
                 except Exception as e:
                     self.logger.error(f"Error in status loop: {e}")
-                # Wait 30 seconds or until stop event
+                # Wait 60 seconds (1 minute) or until stop event
                 try:
-                    await asyncio.wait_for(self._stop_event.wait(), timeout=30)
+                    await asyncio.wait_for(self._stop_event.wait(), timeout=60)
                 except asyncio.TimeoutError:
                     pass
 
@@ -521,12 +521,46 @@ class PaperPolyGraalX(PolyGraalX):
 # MAIN ENTRY POINT
 # ══════════════════════════════════════════════════════════════════════════════
 
+def display_menu() -> int:
+    """Display interactive mode selection menu.
+    
+    Returns:
+        1 for paper trading, 2 for real trading
+    """
+    print()
+    print("╔══════════════════════════════════════════════════════════════════╗")
+    print("║               🚀 PolyGraalX - Trading Bot                        ║")
+    print("╠══════════════════════════════════════════════════════════════════╣")
+    print("║                                                                  ║")
+    print("║   [1] 📝 Paper Trading (Simulation avec balance fictive)         ║")
+    print("║   [2] 💰 Real Trading  (Trading réel sur Polymarket)             ║")
+    print("║                                                                  ║")
+    print("╚══════════════════════════════════════════════════════════════════╝")
+    print()
+    
+    while True:
+        try:
+            choice = input("👉 Choisissez un mode (1 ou 2): ").strip()
+            if choice == "1":
+                return 1
+            elif choice == "2":
+                return 2
+            else:
+                print("❌ Choix invalide. Entrez 1 ou 2.")
+        except (EOFError, KeyboardInterrupt):
+            print("\n👋 Au revoir!")
+            sys.exit(0)
+
+
 async def main() -> None:
-    """Main entry point with bulletproof error handling."""
+    """Main entry point with interactive mode selection."""
     import os
     
-    # Check for paper trading mode
-    paper_mode = os.getenv("PAPER_TRADING", "false").lower() in ("true", "1", "yes")
+    # Display interactive menu
+    mode_choice = display_menu()
+    paper_mode = (mode_choice == 1)
+    
+    # Get paper balance from env or default
     paper_balance = float(os.getenv("PAPER_BALANCE", "10.0"))
     
     # Load configuration
@@ -537,19 +571,40 @@ async def main() -> None:
             config.validate()
     except ValueError as e:
         if not paper_mode:
-            print(f"Configuration error: {e}")
-            print("Please check your .env file")
+            print(f"❌ Configuration error: {e}")
+            print("📝 Please check your .env file")
             sys.exit(1)
     
     # Setup logging
     logger = setup_logging(config)
     
     if paper_mode:
+        print()
+        print("═" * 60)
+        print("🎮 MODE: PAPER TRADING (Simulation)")
+        print(f"💰 Balance initiale: ${paper_balance:.2f}")
+        print("⚠️  Aucun trade réel ne sera exécuté")
+        print("═" * 60)
+        print()
         logger.info("🎮 PAPER TRADING MODE ENABLED")
         logger.info(f"💰 Virtual balance: ${paper_balance:.2f}")
         bot = PaperPolyGraalX(config, initial_balance=paper_balance)
     else:
-        logger.info("Configuration loaded successfully")
+        print()
+        print("═" * 60)
+        print("💰 MODE: REAL TRADING")
+        print("⚠️  ATTENTION: Des trades RÉELS seront exécutés!")
+        print(f"📊 Montant par trade: ${config.bet_amount_usdc}")
+        print("═" * 60)
+        print()
+        
+        # Confirmation for real trading
+        confirm = input("⚠️  Confirmez-vous le trading réel? (oui/non): ").strip().lower()
+        if confirm not in ("oui", "o", "yes", "y"):
+            print("❌ Trading annulé.")
+            sys.exit(0)
+        
+        logger.info("💰 REAL TRADING MODE ENABLED")
         bot = PolyGraalX(config)
     
     # Setup signal handlers for graceful shutdown
