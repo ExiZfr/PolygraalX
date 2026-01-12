@@ -134,9 +134,13 @@ class PolyGraalX:
     Coordinates all components and manages the main trading loop.
     """
     
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, bet_mode: str = "fixed", bet_value: float = 2.0):
         self.config = config
         self.logger = logging.getLogger("PolyGraalX")
+        
+        # Bet sizing strategy
+        self.bet_mode = bet_mode  # "fixed" or "percentage"
+        self.bet_value = bet_value  # Either fixed amount or percentage
         
         # Components
         self.price_feed = PriceFeed(
@@ -168,6 +172,26 @@ class PolyGraalX:
         # Control
         self._stop_event = asyncio.Event()
         self._running = False
+    
+    def get_bet_amount(self, current_balance: float = None) -> float:
+        """
+        Calculate bet amount based on mode.
+        
+        Args:
+            current_balance: Current balance (for percentage mode)
+            
+        Returns:
+            Amount to bet in USDC
+        """
+        if self.bet_mode == "fixed":
+            return self.bet_value
+        elif self.bet_mode == "percentage":
+            if current_balance is None:
+                # Fallback to config default
+                return self.config.bet_amount_usdc
+            return current_balance * (self.bet_value / 100)
+        else:
+            return self.config.bet_amount_usdc
     
     def _get_zscore(self, asset: str) -> float:
         """Get current Z-Score for an asset."""
@@ -227,11 +251,14 @@ class PolyGraalX:
                 if signal:
                     self.logger.info(f"🎯 SIGNAL DETECTED: {signal}")
                     
+                    # Calculate bet amount dynamically
+                    bet_amount = self.get_bet_amount()
+                    
                     # Execute trade
                     result = self.trading.place_market_order(
                         market=market,
                         direction=signal.direction,
-                        amount_usdc=self.config.bet_amount_usdc
+                        amount_usdc=bet_amount
                     )
                     
                     if result.success:
@@ -383,11 +410,15 @@ class PaperPolyGraalX(PolyGraalX):
     Uses simulated trading engine with fictional balance.
     """
     
-    def __init__(self, config: Config, initial_balance: float = 10.0):
+    def __init__(self, config: Config, initial_balance: float = 10.0, bet_mode: str = "fixed", bet_value: float = 2.0):
         # Initialize parent components except trading/positions
         self.config = config
         self.logger = logging.getLogger("PolyGraalX-Paper")
         self.initial_balance = initial_balance
+        
+        # Bet sizing strategy
+        self.bet_mode = bet_mode
+        self.bet_value = bet_value
         
         # Components
         self.price_feed = PriceFeed(
@@ -420,6 +451,19 @@ class PaperPolyGraalX(PolyGraalX):
         # Control
         self._stop_event = asyncio.Event()
         self._running = False
+    
+    def get_bet_amount(self, current_balance: float = None) -> float:
+        """
+        Override to use paper trading engine's current balance.
+        """
+        if self.bet_mode == "fixed":
+            return self.bet_value
+        elif self.bet_mode == "percentage":
+            # Use current balance from paper trading engine
+            balance = self.trading.balance
+            return balance * (self.bet_value / 100)
+        else:
+            return self.config.bet_amount_usdc
     
     async def run(self) -> None:
         """Main bot execution in paper trading mode."""
@@ -571,6 +615,61 @@ def display_menu() -> int:
             sys.exit(0)
 
 
+def display_bet_menu() -> tuple[str, float]:
+    """
+    Display bet sizing mode menu.
+    
+    Returns:
+        Tuple of (mode, value) where:
+        - mode is "fixed" or "percentage"
+        - value is either fixed amount or percentage
+    """
+    print("\n╔══════════════════════════════════════════════════════════════════╗")
+    print("║        💰 Dimensionnement des Trades                             ║")
+    print("╠══════════════════════════════════════════════════════════════════╣")
+    print("║                                                                  ║")
+    print("║   [1] 💵 Montant Fixe     (ex: $2.00 par trade)                  ║")
+    print("║   [2] 📊 Pourcentage      (ex: 10% de la balance par trade)      ║")
+    print("║                                                                  ║")
+    print("╚══════════════════════════════════════════════════════════════════╝")
+    
+    while True:
+        try:
+            choice = input("\n👉 Choisissez le mode de bet (1 ou 2): ").strip()
+            
+            if choice == "1":
+                # Fixed amount
+                while True:
+                    try:
+                        amount = input("💵 Montant fixe par trade (ex: 2.0): $").strip()
+                        amount_float = float(amount)
+                        if amount_float <= 0:
+                            print("❌ Le montant doit être positif.")
+                            continue
+                        return ("fixed", amount_float)
+                    except ValueError:
+                        print("❌ Veuillez entrer un nombre valide.")
+                        
+            elif choice == "2":
+                # Percentage
+                while True:
+                    try:
+                        pct = input("📊 Pourcentage de la balance par trade (ex: 10): ").strip()
+                        pct_float = float(pct)
+                        if pct_float <= 0 or pct_float > 100:
+                            print("❌ Le pourcentage doit être entre 0 et 100.")
+                            continue
+                        return ("percentage", pct_float)
+                    except ValueError:
+                        print("❌ Veuillez entrer un nombre valide.")
+            else:
+                print("❌ Choix invalide. Entrez 1 ou 2.")
+                
+        except (EOFError, KeyboardInterrupt):
+            print("\n👋 Au revoir!")
+            sys.exit(0)
+
+
 async def main() -> None:
     """Main entry point with interactive mode selection."""
     import os
@@ -578,6 +677,9 @@ async def main() -> None:
     # Display interactive menu
     mode_choice = display_menu()
     paper_mode = (mode_choice == 1)
+    
+    # Ask for bet sizing strategy
+    bet_mode, bet_value = display_bet_menu()
     
     # Get paper balance from env or default
     paper_balance = float(os.getenv("PAPER_BALANCE", "10.0"))
@@ -602,12 +704,20 @@ async def main() -> None:
         print("═" * 60)
         print("🎮 MODE: PAPER TRADING (Simulation)")
         print(f"💰 Balance initiale: ${paper_balance:.2f}")
+        if bet_mode == "fixed":
+            print(f"💵 Bet mode: Montant Fixe (${bet_value:.2f} par trade)")
+        else:
+            print(f"📊 Bet mode: Pourcentage ({bet_value:.1f}% de la balance par trade)")
         print("⚠️  Aucun trade réel ne sera exécuté")
         print("═" * 60)
         print()
         logger.info("🎮 PAPER TRADING MODE ENABLED")
         logger.info(f"💰 Virtual balance: ${paper_balance:.2f}")
-        bot = PaperPolyGraalX(config, initial_balance=paper_balance)
+        if bet_mode == "fixed":
+            logger.info(f"💵 Bet Mode: Fixed ${bet_value:.2f}")
+        else:
+            logger.info(f"📊 Bet Mode: {bet_value:.1f}% of balance")
+        bot = PaperPolyGraalX(config, initial_balance=paper_balance, bet_mode=bet_mode, bet_value=bet_value)
     else:
         print()
         print("═" * 60)
