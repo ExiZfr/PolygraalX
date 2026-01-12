@@ -18,6 +18,7 @@ class Config:
     private_key: str
     funder_address: str
     signature_type: int = 1
+    chain_id: int = 137  # Polygon Mainnet
     
     # Trading Parameters
     bet_amount_usdc: float = 10.0
@@ -43,6 +44,11 @@ class Config:
     log_file: str = "bot.log"
     log_max_bytes: int = 10_000_000
     log_backup_count: int = 5
+    
+    @property
+    def polygon_private_key(self) -> str:
+        """Alias for private_key for TradingEngine compatibility."""
+        return self.private_key
     
     @classmethod
     def from_env(cls, env_file: str = ".env") -> "Config":
