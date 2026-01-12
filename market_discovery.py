@@ -436,16 +436,17 @@ class MarketDiscovery:
             logger.debug(f"Too far from expiry ({seconds_to_expiry:.0f}s > {self.max_time_to_expiry}s): {question[:50]}")
             return None
         
-        # Parse strike price
+        # Parse strike price (optional for Up/Down markets)
         strike_price = self._parse_strike_price(question)
         if strike_price is None:
-            logger.debug(f"Could not parse strike price: {question}")
-            return None
+            # Default to 0 for Up/Down markets that don't have explicit strike prices
+            logger.debug(f"No strike price in question, using 0: {question[:50]}")
+            strike_price = 0.0
         
         # Get token IDs
         token_yes, token_no = self._extract_token_ids(market_data)
         if not token_yes or not token_no:
-            logger.debug(f"Missing token IDs for: {question}")
+            logger.debug(f"Missing token IDs for: {question[:50]}")
             return None
         
         return Market(
