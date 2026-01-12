@@ -191,6 +191,16 @@ class PolyGraalX:
                 # Get market
                 market = self.market_discovery.get_cached_market(asset)
                 if not market or not market.is_tradeable:
+                    # Only log once per minute to avoid spam
+                    if not hasattr(self, '_last_no_market_log'):
+                        self._last_no_market_log = {}
+                    
+                    import time
+                    now = time.time()
+                    if asset not in self._last_no_market_log or (now - self._last_no_market_log.get(asset, 0)) > 60:
+                        self.logger.warning(f"⚠️ No tradeable market found for {asset} - skipping entry check")
+                        self.logger.info(f"💡 Market discovery may be failing due to Gamma API connection issues")
+                        self._last_no_market_log[asset] = now
                     continue
                 
                 # Get price data
