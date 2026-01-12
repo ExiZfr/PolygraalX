@@ -121,9 +121,7 @@ class MarketDiscovery:
             "tag_id": CRYPTO_TAG_ID,  # Use 15-minute crypto markets tag
             "active": "true",
             "closed": "false",
-            "order": "end_date",  # Sort by end date
-            "ascending": "false",  # Most recent first
-            "limit": 200  # Increase limit to find current markets
+            "limit": 200
         }
         
         # If API was previously unreachable, only retry every 5 minutes
@@ -139,6 +137,14 @@ class MarketDiscovery:
                 async with session.get(url, params=params) as response:
                     response.raise_for_status()
                     data = await response.json()
+                    
+                    # Sort by end_date_iso (newest first) - client-side
+                    if isinstance(data, list):
+                        data.sort(
+                            key=lambda m: m.get('end_date_iso') or m.get('endDateIso') or '', 
+                            reverse=True
+                        )
+                    
                     logger.debug(f"Fetched {len(data) if isinstance(data, list) else 0} 15-min crypto markets")
                     # Reset unreachable flag on success
                     self._api_unreachable = False
