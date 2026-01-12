@@ -732,7 +732,10 @@ async def main() -> None:
         print("═" * 60)
         print("💰 MODE: REAL TRADING")
         print("⚠️  ATTENTION: Des trades RÉELS seront exécutés!")
-        print(f"📊 Montant par trade: ${config.bet_amount_usdc}")
+        if bet_mode == "fixed":
+            print(f"💵 Montant par trade: ${bet_value:.2f}")
+        else:
+            print(f"📊 Pourcentage par trade: {bet_value:.1f}% de la balance")
         print("═" * 60)
         print()
         
@@ -743,7 +746,11 @@ async def main() -> None:
             sys.exit(0)
         
         logger.info("💰 REAL TRADING MODE ENABLED")
-        bot = PolyGraalX(config)
+        if bet_mode == "fixed":
+            logger.info(f"💵 Bet Mode: Fixed ${bet_value:.2f}")
+        else:
+            logger.info(f"📊 Bet Mode: {bet_value:.1f}% of balance")
+        bot = PolyGraalX(config, bet_mode=bet_mode, bet_value=bet_value)
     
     # Setup signal handlers for graceful shutdown
     loop = asyncio.get_running_loop()
