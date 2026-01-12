@@ -79,6 +79,9 @@ class MarketDiscovery:
         # Cached active markets
         self._markets: Dict[str, Market] = {}  # asset -> Market
         self._session: Optional[aiohttp.ClientSession] = None
+        # Flag to avoid spamming warnings when API is unreachable
+        self._api_unreachable: bool = False
+        self._last_error_logged: float = 0
     
     async def _get_session(self) -> aiohttp.ClientSession:
         """Get or create aiohttp session with SSL verification disabled for problematic networks."""
@@ -114,6 +117,13 @@ class MarketDiscovery:
             "limit": 100
         }
         
+        # If API was previously unreachable, only retry every 5 minutes
+        import time
+        if self._api_unreachable:
+            if time.time() - self._last_error_logged < 300:  # 5 minutes
+                logger.debug("Skipping Gamma API fetch - marked as unreachable")
+                return []
+        
         max_retries = 3
         for attempt in range(max_retries):
             try:
@@ -121,34 +131,49 @@ class MarketDiscovery:
                     response.raise_for_status()
                     data = await response.json()
                     logger.debug(f"Fetched {len(data)} crypto markets")
+                    # Reset unreachable flag on success
+                    self._api_unreachable = False
                     return data if isinstance(data, list) else []
                     
             except aiohttp.ClientConnectorError as e:
                 if attempt < max_retries - 1:
-                    wait_time = 2 ** attempt  # Exponential backoff: 1s, 2s, 4s
-                    logger.warning(
-                        f"Connection error to Gamma API (attempt {attempt + 1}/{max_retries}): {e}. "
-                        f"Retrying in {wait_time}s..."
-                    )
+                    wait_time = 2 ** attempt
+                    # Only log warning on first cycle
+                    if not self._api_unreachable:
+                        logger.warning(
+                            f"Connection error to Gamma API (attempt {attempt + 1}/{max_retries}): {e}. "
+                            f"Retrying in {wait_time}s..."
+                        )
                     await asyncio.sleep(wait_time)
                 else:
-                    logger.error(
-                        f"Failed to connect to Gamma API after {max_retries} attempts. "
-                        f"Network may be unreachable or SSL certificate issue. "
-                        f"Bot will continue with cached markets."
-                    )
+                    # Only log error once every 5 minutes
+                    if not self._api_unreachable:
+                        logger.error(
+                            f"Failed to connect to Gamma API after {max_retries} attempts. "
+                            f"Network may be unreachable. Bot will continue with cached markets. "
+                            f"(This message will not repeat for 5 minutes)"
+                        )
+                    self._api_unreachable = True
+                    self._last_error_logged = time.time()
                     return []
                     
             except asyncio.TimeoutError:
                 if attempt < max_retries - 1:
-                    logger.warning(f"Timeout fetching markets (attempt {attempt + 1}/{max_retries}), retrying...")
+                    if not self._api_unreachable:
+                        logger.warning(f"Timeout fetching markets (attempt {attempt + 1}/{max_retries}), retrying...")
                     await asyncio.sleep(2 ** attempt)
                 else:
-                    logger.error(f"Timeout after {max_retries} attempts. Will retry on next scan.")
+                    if not self._api_unreachable:
+                        logger.error(f"Timeout after {max_retries} attempts. (This message will not repeat for 5 minutes)")
+                    self._api_unreachable = True
+                    self._last_error_logged = time.time()
                     return []
                     
             except aiohttp.ClientError as e:
-                logger.error(f"HTTP error fetching markets: {e}")
+                if not self._api_unreachable:
+                    logger.error(f"HTTP error fetching markets: {e}")
+                self._api_unreachable = True
+                self._last_error_logged = time.time()
                 return []
                 
             except Exception as e:
