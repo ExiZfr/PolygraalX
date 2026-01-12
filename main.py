@@ -330,8 +330,12 @@ class PolyGraalX:
                 # Check exit conditions for open positions
                 await self._check_exit_conditions()
                 
-                # Check if paper trading engine hit max consecutive losses
+                # Check if we hit max consecutive losses (paper or real trading)
                 if hasattr(self.trading, '_should_stop') and self.trading._should_stop:
+                    self.logger.critical("🛑 ARRÊT AUTOMATIQUE: Trop de pertes consécutives détectées!")
+                    self.stop()
+                    break
+                if hasattr(self.positions, '_should_stop') and self.positions._should_stop:
                     self.logger.critical("🛑 ARRÊT AUTOMATIQUE: Trop de pertes consécutives détectées!")
                     self.stop()
                     break
